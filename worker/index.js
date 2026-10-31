@@ -42,7 +42,7 @@ async function sha256(value) {
 }
 
 function isValidDayKey(value) {
-  const match = typeof value === "string" && value.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const match = typeof value === "string" && value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return false;
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -103,7 +103,7 @@ async function readPlayers(env) {
   const playerFiles = files.filter(file =>
     file.type === "file" &&
     file.name.endsWith(".json") &&
-    /^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$/.test(file.name)
+    /^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/.test(file.name)
   );
   const results = await Promise.all(playerFiles.map(async file => {
     const id = file.name.slice(0, -5);
