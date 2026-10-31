@@ -328,8 +328,106 @@ body{
 .wizard-progress i{background:#3fb950!important}
 .toast{background:#233244!important;color:#eef4fa!important;border:1px solid #43566b!important}
 
+
+/* Final dark-theme contrast and header layout */
+:root{color-scheme:dark!important;--bg:#0b0f14;--panel:#141b24;--line:#2a3542;--text:#edf2f7;--muted:#a2afbd;--green:#39d353;--green2:#238636;--blue:#69b7ff;--surface:#101720}
+html,body{background-color:var(--bg)!important;color:var(--text)!important}
+body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var(--bg)!important}
+.top{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;max-width:none!important;width:100%;padding:12px max(22px,calc((100% - 1040px)/2))!important;background:#0b0f14!important;border-bottom:1px solid #263340!important;box-shadow:0 5px 22px #0003}
+.brand{grid-column:1;justify-self:start;display:flex;align-items:center;gap:10px;color:#f1f5f9!important;font-size:20px;font-weight:750}
+.brand-mark{width:38px;height:38px;display:block;flex:none}
+.status-slot{grid-column:2;justify-self:center;min-width:0}
+.status-badge{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:30px;padding:6px 13px;border-radius:30px;border:1px solid #354353;background:#17212c;color:#c3d0dc!important;font-size:10px!important;font-weight:700;letter-spacing:.15px;white-space:nowrap;box-shadow:inset 0 1px #ffffff08}
+.status-badge::before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:#8b98a8;box-shadow:0 0 0 3px #8b98a81c}
+.status-badge.connected{color:#a7f3b7!important;border-color:#28683c;background:#12271a}
+.status-badge.connected::before{background:#39d353;box-shadow:0 0 0 3px #39d35322}
+.status-badge.warning{color:#f4d58a!important;border-color:#705826;background:#2a2110}
+.status-badge.warning::before{background:#e3b341;box-shadow:0 0 0 3px #e3b34122}
+.status-badge.local{color:#b8c4d0!important}
+.top-actions{grid-column:3;justify-self:end;display:flex;align-items:center}
+.brand-mark rect{fill:#000!important}
+.gear{width:38px;height:38px;display:grid;place-items:center;padding:0;border-radius:50%;background:#151d27!important;border:1px solid #354353!important;color:#c3d0dc!important}
+.gear:hover{background:#202b37!important}
+.hero h1{color:#f1f5f9!important}.hero h1 span{color:#69b7ff!important}.hero p{color:#a7b4c2!important}
+.eyebrow,.kicker{color:#a9b7c5!important;font-weight:750}
+.head h2,.crew h2{color:#edf2f7!important}
+.month{background:#15251b!important;color:#a8e6b4!important;border-color:#2b5638!important}
+.pill{background:#1a2531!important;color:#c1ceda!important;border-color:#354454!important}
+.activity-panel{background:linear-gradient(145deg,#151e28,#111820)!important}
+.activity-panel .head{align-items:center}
+.activity-panel .legend,.legend{color:#a9b7c5!important}
+#caption{color:#a9b7c5!important;font-size:10px;line-height:1.55}
+.activity-months,.activity-weekdays{color:#a2afbd!important}
+.activity-heat{background:transparent}
+.activity-cells .cell,.cell{background:#263342!important;border-color:#344354!important}
+.activity-cells .cell.yes,.cell.yes{background:#238636!important;border-color:#39d353!important}
+.activity-cells .cell.yes.streak-day,.cell.yes.streak-day{background:#39d353!important;border-color:#8aff9d!important;box-shadow:0 0 7px #39d35355!important}
+.activity-cells .cell.today,.cell.today{outline:2px solid #f0bd4e!important;outline-offset:2px}
+.activity-cells .cell.no,.cell.no{background:#63323a!important;border-color:#94505a!important}
+.activity-cells .cell.future,.cell.future{opacity:.27}
+.activity-heat::-webkit-scrollbar-track{background:#0e151d!important}
+.activity-heat::-webkit-scrollbar-thumb{background:#3a4a5b!important}
+.stat{background:linear-gradient(145deg,#161f29,#121922)!important;border-color:#2c3947!important;color:#c4d0dc!important}
+.stat .label{color:#9eacba!important;font-weight:750}.stat strong{color:#f2f6fa!important}.stat small,.stat p{color:#a0adba!important}
+.streak{color:#f0c66b!important}
+.result h2{color:#edf2f7!important}.result p{color:#a9b7c5!important}.emoji{background:#1b3024!important}
+.note{color:#9aa8b6!important;border-color:#2b3744!important}
+.checkin{background:radial-gradient(ellipse at 90% 0%,#23863620,transparent 48%),linear-gradient(145deg,#171f29,#111820)!important;border-color:#31503a!important}
+.badge{color:#b7e6c0!important;background:#1b2a20!important;border-color:#31553b!important}
+.answer{background:#202b37!important;color:#e3ebf3!important;border-color:#405063!important}
+.answer:hover{background:#293846!important;border-color:#536b82!important}
+.answer.no-go,.answer.yes,.answer.calendar-save,.primary{background:#238636!important;border-color:#2ea043!important;color:#f5fff6!important}
+.answer.no-go:hover,.answer.yes:hover,.primary:hover{background:#2ea043!important}
+.answer.neutral-go,.answer.went{background:#202b37!important;color:#e3ebf3!important;border-color:#405063!important}
+.secondary-btn,.wizard-finish,.calendar{background:#202b37!important;color:#dce8f4!important;border-color:#405063!important}
+.secondary-btn:hover,.wizard-finish:hover,.calendar:hover{background:#293846!important}
+.crew-player{background:#151e28!important;border-color:#2e3b49!important}
+.crew-player-name{color:#edf2f7!important}.crew-player-handle,.crew-player-stats,.crew-subtitle{color:#a2afbd!important}
+.crew-streak{color:#a8f0b7!important;background:#163321!important;border-color:#28683c!important}
+.crew-empty,.empty{background:#111922!important;color:#aab7c4!important;border-color:#3a4653!important}
+.crew-empty b,.empty b{color:#edf2f7!important}
+.complete-card{background:linear-gradient(145deg,#163321,#111d17)!important;border-color:#34764a!important}
+.complete-card h2{color:#a7f3b7!important}.complete-card p{color:#c3e8cb!important}.complete-card strong{color:#fff!important}
+.game-over{background:linear-gradient(145deg,#2b1a21,#17151c)!important;border-color:#694247!important}
+.game-over h2{color:#ffaaaa!important}.game-over p{color:#ddb8bf!important}.game-over .out-label{background:#4b252a!important;color:#ffc0c0!important}
+.box,.onboarding-box,.players-box,.daily-box{background:#151d27!important;color:#edf2f7!important;border-color:#354353!important;box-shadow:0 20px 55px #0009!important}
+.box h2,.wizard-step h2,.daily-box h2{color:#edf2f7!important}
+.box>p,.wizard-step>p,.daily-box>p{color:#acb9c6!important}.daily-box>p strong{color:#f1f5f9!important}
+.daily-day,.wizard-tip{background:#17271d!important;color:#b7e6c0!important;border-color:#31543a!important}
+.daily-later{color:#a1afbd!important}.daily-later:hover{color:#69b7ff!important}
+.close{color:#a9b7c5!important}.close:hover{background:#273341!important}
+.wizard-progress{background:#2a3542!important}.wizard-progress i{background:#39d353!important}
+.welcome-mark{background:#000!important}
+.pledge-text{background:#101820!important;color:#e4f3e7!important;border-left-color:#39d353!important}
+.pledge-check,.form label,.player-select-label{color:#d3dde7!important}
+.form small,.wizard-footnote{color:#9eacba!important}
+.form input:not([type=checkbox]),.player-select{background:#0e141b!important;color:#edf2f7!important;border-color:#3a4a5a!important}
+.form input::placeholder{color:#8493a2!important}
+.form input:not([type=checkbox]):focus,.player-select:focus{border-color:#69b7ff!important;outline:2px solid #69b7ff33!important}
+.calendar-summary{background:#101820!important;border-color:#2b3d33!important}
+.calendar-summary span,.calendar-summary small{color:#a0b3a5!important}.calendar-summary strong{color:#a7e6b3!important}
+.selected-player-view .player-profile-head,.selected-player-view .player-profile-stats div{background:#111922!important;border-color:#2e3b49!important}
+.selected-player-view .player-profile-head strong,.selected-player-view .player-profile-stats b{color:#edf2f7!important}
+.selected-player-view .player-profile-head small,.selected-player-view .player-profile-stats span{color:#a2afbd!important}
+.selected-player-view .activity-heat{border-color:#2e3b49!important}
+.footer{border-color:#2a3542!important;color:#9aa8b6!important}.footer a{color:#8fc5ff!important}
+.toast{background:#1d2a38!important;color:#f0f5fa!important;border-color:#40566d!important}
+:focus-visible{outline-color:#69b7ff!important}
+@media(max-width:580px){
+ .top{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;grid-template-areas:"brand actions" "status status";gap:9px 12px;padding:10px 15px!important}
+ .brand{grid-area:brand;font-size:18px}.brand-mark{width:34px;height:34px}
+ .status-slot{grid-area:status;justify-self:center}.top-actions{grid-area:actions}
+ .status-badge{min-height:27px;padding:5px 12px;font-size:9px!important}
+ .hero h1{color:#f1f5f9!important}.activity-panel .head{align-items:flex-start}.activity-actions{align-items:flex-end}
+}
+@media(max-width:360px){.status-badge{font-size:8px!important}.activity-actions{gap:4px}.secondary-btn{padding:7px 8px}}
+
 </style></head><body>
-<header class="top"><div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#e8f0fe"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#1a73e8" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#34a853" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#fbbc04"/></svg><span>Goongle</span></div><div><span id="sync" class="muted" style="font-size:9px;margin-right:10px">Local mode</span><button class="gear" id="settings" aria-label="Settings">⚙</button></div></header>
+<header class="top">
+  <div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#000000"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#39d353" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#58a6ff" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#f0c75e"/></svg><span>Goongle</span></div>
+  <div class="status-slot"><span id="sync" class="status-badge local" role="status" aria-live="polite">Local mode</span></div>
+  <div class="top-actions"><button class="gear" id="settings" aria-label="Settings">⚙</button></div>
+</header>
 <main class="wrap">
 <section class="hero"><div><div class="eyebrow">YOUR DAILY HABIT TRACKER</div><h1>Stay mindful.<br><span>Own your streak.</span></h1><p>One honest check-in every day. Track your progress, one day at a time.</p></div><div class="month">▦ &nbsp; EVERY DAY</div></section>
 <section class="panel activity-panel"><div class="head"><div><div class="kicker">ACTIVITY HISTORY</div><h2 id="my-title">Your activity · Last 12 months</h2></div><div class="activity-actions"><span class="pill" id="count-pill">0 check-ins</span><button class="secondary-btn" id="view-players" type="button">View players ↗</button></div></div><div id="heat" class="activity-heat"></div><div class="legend"><span id="caption">Your daily activity will appear here.</span></div></section>
@@ -378,7 +476,7 @@ const store=()=>{
 const isEliminated=()=>false;
 const isCompleted=()=>false;
 function toast(s){let t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),3000)}
-function status(s){$('sync').textContent=s;$('sync').style.color=/(synced|loaded|connected)/i.test(s)?'#3fb950':/error|not ready|local only/i.test(s)?'#d29922':'#8b98a8'}
+function status(s){const el=$('sync');el.textContent=s;el.classList.remove('connected','warning','local');el.classList.add(/synced|loaded|connected/i.test(s)?'connected':/error|not ready|local only|offline/i.test(s)?'warning':'local')}
 let wizardStep=1;
 function setWizardStep(step){wizardStep=step;['welcome','pledge','profile','calendar'].forEach((name,i)=>$(name+'-step').hidden=(i+1)!==step);$('wizard-kicker').textContent=['WELCOME · STEP 1 OF 4','THE PLEDGE · STEP 2 OF 4','YOUR PROFILE · STEP 3 OF 4','CALENDAR · STEP 4 OF 4'][step-1];$('wizard-progress').style.width=(step*25)+'%';}
 function showWizard(step=1){foundPlayer=null;$('name').value=profile?.name||'';$('time').value=profile?.usualTime||'';$('lookup').textContent='Your name becomes your player identity.';$('pledge-ack').checked=client.pledgeAccepted===true;$('pledge-next').disabled=!$('pledge-ack').checked;setWizardStep(step);$('modal').hidden=false;}
