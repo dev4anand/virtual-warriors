@@ -43,7 +43,7 @@ After deployment, copy the Worker URL, usually:
 
 `https://go-tracker-sync.<your-account>.workers.dev`
 
-Edit `SYNC_API` near the top of the site's `index.html` and set it to that URL, then commit the change. The browser will then send check-ins to the Worker, which writes the individual JSON file using the server-side secret.
+Set `SYNC_API` near the top of the site's `index.html` to the deployed URL. The repository already contains the configured URL for the current Go Tracker deployment. The browser uses the Worker for both directions: `GET /health` verifies the deployment and token, `GET /players/{player-id}` reads the public player record, and authenticated `PUT /players/{player-id}` creates or updates `data/players/<player-id>.json`.
 
 ## Player ownership
 
