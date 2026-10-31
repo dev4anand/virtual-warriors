@@ -1,54 +1,38 @@
-# Go Tracker GitHub sync Worker
+# Goon Tracker GitHub sync Worker
 
-This small Cloudflare Worker keeps the GitHub token out of the public static website.
+This Cloudflare Worker keeps the GitHub token out of the public static website.
 
-## 1. Create the Worker
+## Secret configuration
 
-1. Sign in to Cloudflare.
-2. Open **Workers & Pages → Create → Worker**.
-3. Create a Worker named `go-tracker-sync`.
-4. Deploy the initial Worker.
+Create a fine-grained GitHub token owned by `dev4anand`, restricted to the `virtual-warriors` repository, with **Contents: Read and write**. In Cloudflare, add it under the Production environment as a **Secret** named `GH_TOKEN`.
 
-## 2. Add the GitHub token as a Worker secret
+Never place the token in a repository file, browser JavaScript, or public JSON.
 
-Create a fine-grained GitHub token at https://github.com/settings/personal-access-tokens/new
+## Deployment
 
-- Resource owner: your GitHub account.
-- Repository access: only `dev4anand/virtual-warriors`.
-- Repository permission: **Contents → Read and write**.
+The Worker source is `worker/index.js`. Deploy the complete current file to the Cloudflare Worker named `go-tracker-sync`. Keep the `GH_TOKEN` Production Secret configured.
 
-In Cloudflare, open the Worker → **Settings → Variables and Secrets → Add**:
-- Type: **Secret**
-- Name: `GH_TOKEN`
-- Value: paste the token
+## Endpoints
 
-Do not add the token to any repository file, frontend JavaScript, or GitHub Pages asset.
+- `GET /health` — verifies that the Worker and GitHub repository access are available.
+- `GET /players` — lists public player records for the in-app dropdown.
+- `GET /players/{player-id}` — returns one public player record without its private authentication hash.
+- `PUT /players/{player-id}` — validates the player's device key and creates or updates their JSON file.
 
-## 3. Deploy this Worker source
+The Worker accepts valid calendar dates in `YYYY-MM-DD` format across all months and years. Each answer is stored as either:
+- `{"answered": true, "clean": true, "updatedAt": "..."}` for a clean day.
+- `{"answered": true, "updatedAt": "..."}` for an answered day without a clean contribution.
 
-From this `worker` directory, install Wrangler and deploy:
+The Worker normalizes legacy records on read/write. Previous `went: false` entries become clean contributions. Previous `went: true` entries become answered-only metadata; no red contribution series is retained or returned. Player status remains active so check-ins can continue every day.
 
-```bash
-npm install --save-dev wrangler
-npx wrangler login
-npx wrangler secret put GH_TOKEN
-npx wrangler deploy
-```
+## Website and storage
 
-The `wrangler.toml` file defines the Worker name and entry point. The secret command prompts for the token without writing it into the repository.
+The website is hosted at https://dev4anand.github.io/virtual-warriors/ and uses the Worker at https://go-tracker-sync.chknhntr123.workers.dev.
 
-## 4. Connect the website
+The browser writes to localStorage first, then syncs the daily record with the Worker. On site open, it reads the public record, merges daily entries by timestamp, and syncs local changes. The browser also retries pending writes when connectivity returns.
 
-After deployment, copy the Worker URL, usually:
+Each player has a random device-specific key stored in browser localStorage. GitHub stores only the SHA-256 hash. Clearing browser storage loses that device key; cross-device editing requires a recovery-key feature.
 
-`https://go-tracker-sync.<your-account>.workers.dev`
+Google Calendar is optional and serves only as a reminder/notification channel. Check-in answers and contribution history remain in Goon Tracker.
 
-Set `SYNC_API` near the top of the site's `index.html` to the deployed URL. The repository already contains the configured URL for the current Go Tracker deployment. The browser uses the Worker for both directions: `GET /health` verifies the deployment and token, `GET /players` lists public player records for the in-app player dropdown, `GET /players/{player-id}` reads one public player record, and authenticated `PUT /players/{player-id}` creates or updates `data/players/<player-id>.json`. Daily entries use unrestricted valid `YYYY-MM-DD` keys so the history continues across months and years.
-
-## Player ownership
-
-On first registration, the browser automatically generates a random 256-bit player key. It is stored only in that browser's localStorage; the public JSON stores only its SHA-256 hash. Returning on the same browser can update the matching record. Another browser/device can view the public record but cannot write to it unless a recovery-key flow is added. Clearing browser storage loses that device's write key.
-
-The Worker only accepts writes for a syntactically validated player ID and checks the per-player key before updating an existing record. A `Yes` answer is just a red day and a streak reset; it does not permanently eliminate the player. Keep this key private. This is a lightweight identity model for a small crew, not a substitute for a full account system.
-
-The Worker only accepts requests from the deployed GitHub Pages origin. This CORS rule is an additional browser restriction, not a replacement for the player-key check.
+Player names and daily history are public GitHub repository data. Use a username and do not enter private information.
