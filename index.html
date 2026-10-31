@@ -166,6 +166,26 @@ $('daily-no').onclick=()=>answerDaily(true);$('daily-yes').onclick=()=>answerDai
 $('view-players').onclick=async()=>{$('players-modal').hidden=false;await drawPlayers()};$('close-players').onclick=()=>$('players-modal').hidden=true;$('player-select').onchange=renderSelectedPlayer;$('players-modal').onclick=e=>{if(e.target===$('players-modal'))$('players-modal').hidden=true};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)$('daily-modal').hidden=true;else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
 window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}else status('Local only')});
+let activeDailyDate=today(),dailyDateRefreshRunning=false;
+async function refreshDailyDate(){
+  const current=today();
+  if(current===activeDailyDate||dailyDateRefreshRunning)return;
+  activeDailyDate=current;
+  dailyDateRefreshRunning=true;
+  try{
+    if(client.today?.date!==current){client.today=null;store()}
+    if(profile){
+      const remote=await remoteMine();
+      if(remote)log=merge(log,normalizeLog(remote.days||{}));
+    }
+  }catch(error){console.warn('Could not refresh the daily check-in date:',error)}
+  draw();
+  openDailyQuestion();
+  dailyDateRefreshRunning=false;
+}
+window.addEventListener('focus',refreshDailyDate);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
+setInterval(refreshDailyDate,60000);
 function shouldAskDaily(){return!!profile&&client.onboarded&&!!client.deviceKey&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
 function openDailyQuestion(){if(!shouldAskDaily())return;$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
 async function answerDaily(clean){await checkin(clean)}
