@@ -4,16 +4,14 @@ A mobile-first dark-mode tracker for the November 1–30, 2026 pledge challenge.
 
 ## Daily rule
 
-The daily question is **“Did you go today?”**
+The challenge question is **“Did you go today?”**
 
-- **No, I didn't go** — this is a clean day. The contribution square turns green and the streak increases by one.
-- **Yes, I went** — the player is eliminated from the November challenge. The current streak ends, the app shows the out-of-game screen and hides calendar reminder controls. The elimination is retained locally and is also written to the public player JSON when the secure Worker is configured.
+- **No, I didn't go** — this is a clean challenge day. The contribution square turns green and the streak increases by one.
+- **Yes, I went** — the player is eliminated from the November challenge. The current streak ends and the out-of-game screen is shown.
+- After a clean answer, click **Ask again** to open the next numbered challenge question. Every answer is a real entry, stored sequentially as November Day 1 through Day 30. This lets you complete the 30-question challenge without waiting for another calendar date.
+- The 30th **No** completes the challenge, triggers the celebration animation, and saves the player's status as `completed`.
 
 A saved Google Calendar series cannot be cancelled by a static website. If a player has already saved the series, they must delete that event in Google Calendar themselves.
-
-## Temporary test control
-
-The check-in card includes a temporary **TEST: Ask question (+1)** button. Every click opens a test question and increases a separate test counter in localStorage. It does not change the real daily check-in, real streak, or GitHub player record. This control is for development/testing and can be removed after testing.
 
 ## First-time experience
 
@@ -38,7 +36,7 @@ Public player records are stored separately at `data/players/<name-derived-id>.j
 - `went: false` for a clean day (green square; contributes to streak).
 - `went: true` for a day the player went (red square; ends the challenge).
 
-The player record also stores `status: "active"` or `status: "out"`, plus `eliminatedAt` when the player is out.
+The player record also stores `status: "active"`, `status: "out"`, or `status: "completed"`, with `eliminatedAt` or `completedAt` timestamps as appropriate.
 
 ## Secure GitHub sync
 
