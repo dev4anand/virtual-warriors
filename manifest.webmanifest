@@ -1,9 +1,9 @@
 {
   "name": "Goongle — Daily Habit Tracker",
   "short_name": "Goongle",
-  "description": "A daily habit tracker with personal streaks and a GitHub-style activity history.",
+  "description": "A simple daily habit tracker with clean contribution history and personal streaks.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#0d1117"
+  "background_color": "#f8fafd",
+  "theme_color": "#f8fafd"
 }
