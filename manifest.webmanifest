@@ -1,0 +1,9 @@
+{
+  "name": "Go Tracker — November 2026",
+  "short_name": "Go Tracker",
+  "description": "A daily November go check-in and streak tracker.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117"
+}
