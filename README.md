@@ -1,52 +1,57 @@
 # Goon Tracker
 
-A simple, ongoing daily habit tracker with personal streaks, a rolling 12-month GitHub-style contribution history, and a community player browser.
+An ongoing daily habit tracker with a GitHub-style year-to-date contribution graph, personal streaks, optional calendar reminders, and a player browser.
 
-## Daily check-in
+## Daily question
 
-When an existing player opens Goon Tracker, the modal **“Did you goon today?”** appears if they have not answered for the current date in the `Asia/Kolkata` timezone.
+When a registered player opens Goon Tracker, the modal **“Did you goon today?”** appears if today's question has not been answered yet. The app uses the `Asia/Kolkata` calendar date and accepts one answer per day.
 
-- **No, I didn't goon** — saves a clean green day and extends the current streak.
-- **Yes, I gooned** — saves a red day and resets the current streak. The player is not eliminated and can start a new streak the next day.
-- Only one answer is accepted per calendar date. The modal appears again on the next date until that date is answered.
-- The streak continues across month and year boundaries. Activity history is keyed by `YYYY-MM-DD`.
+- **No, I didn't goon** — saves a clean day, shown as a bright green contribution square, and extends the current streak.
+- **Yes, I did** — records only that today's question was answered. It does not store a gooned-day value and does not create a red square.
+- Only clean days are highlighted in the contribution graph. There is no red activity series.
+- A day without a clean check-in breaks the current streak. A later clean day starts a new streak; players are never eliminated.
 
-## Activity and community
+The browser saves each answer immediately in localStorage, then synchronizes the record through the Cloudflare Worker to GitHub.
 
-The personal activity graph shows the most recent 365 days in a GitHub-style contribution grid. The **View players** button opens a modal with a dropdown to select another player and view their contribution history, clean-day count, gooned-day count, and current streak.
+## Activity history
 
-## Local storage and GitHub synchronization
+The contribution graph starts on **January 1 of the current year** and ends on today's date. It is horizontally scrollable and opens scrolled to the latest date. Month labels and weekday labels follow the GitHub contribution-grid layout. Each clean day is highlighted bright green; unmarked and answered-but-not-clean days remain neutral.
 
-Every answer is first saved to browser `localStorage`, then sent to the Cloudflare Worker. When the site opens, it loads the public player JSON, merges the timestamped daily entries, and synchronizes the merged record. Pending changes are retried when the browser comes back online.
+The dashboard shows the current streak, clean-day count, and total check-ins. The **View players** button opens a modal with a dropdown to select another public player and view their year-to-date contribution graph and streak.
 
-Player records are stored in:
+## Calendar reminders
 
-`data/players/<player-id>.json`
+Google Calendar is optional and is used only for daily notifications/reminders. It does not store answers, calculate streaks, or control the contribution graph. Players can use Goon Tracker without connecting a calendar.
 
-The Worker exposes:
-- `GET /health` — checks Worker and GitHub connectivity.
-- `GET /players` — lists public player records without returning the private key hash.
+## Data format and synchronization
+
+Public player JSON files are stored at `data/players/<player-id>.json`. Daily records use `YYYY-MM-DD` keys:
+
+- `{"answered": true, "clean": true, "updatedAt": "..."}` — answered and stayed clean; displayed bright green.
+- `{"answered": true, "updatedAt": "..."}` — answered, but no clean contribution is recorded; displayed neutrally.
+
+Legacy `went: false` entries are migrated to clean green entries. Legacy `went: true` entries are migrated to answered-only metadata, so the app does not display or retain a red contribution value.
+
+The static website never contains the GitHub token. The Cloudflare Worker uses the Production Secret `GH_TOKEN` and exposes:
+- `GET /health` — checks Worker and GitHub access.
+- `GET /players` — lists public players for the dropdown.
 - `GET /players/{player-id}` — reads one public player record.
-- `PUT /players/{player-id}` — validates the private device key and creates or updates the record.
+- `PUT /players/{player-id}` — securely creates or updates one player's JSON using their device key.
 
-The static website does not contain a GitHub token. The Worker uses the Cloudflare Production secret `GH_TOKEN`. The token needs Contents read and write permission for this repository.
+Each player has a random device-specific key stored in that browser's localStorage; GitHub stores only its SHA-256 hash. Clearing site data loses that device key. Cross-device editing requires a recovery-key mechanism.
 
-Each player has a random device-specific key stored in that browser's localStorage; the JSON record stores only its SHA-256 hash. Clearing local site data loses that device key. Another device can view public player records but cannot write to an existing profile without a recovery-key mechanism.
+## Setup
 
-## First-time setup
-
-1. Read and accept the pledge.
-2. Enter a username and usual reminder time.
-3. The app checks for an existing player record and restores its history when found.
-4. Optionally save the recurring daily Google Calendar reminder.
+1. Accept the pledge.
+2. Enter a username and preferred daily reminder time.
+3. The app restores an existing public player record when one is available.
+4. Optionally add a recurring Google Calendar reminder.
 
 ## Deployment
 
 - Website: https://dev4anand.github.io/virtual-warriors/
 - Worker: https://go-tracker-sync.chknhntr123.workers.dev
-- Website source: GitHub Pages via the workflow in `.github/workflows/pages.yml`.
-- Worker source: `worker/index.js`; deploy the updated source in Cloudflare after changing it.
+- Website deployment: GitHub Pages using `.github/workflows/pages.yml`.
+- Worker deployment: deploy `worker/index.js` in Cloudflare after changes.
 
-## Privacy note
-
-Player names, daily answers, and contribution history are stored in public JSON files in this GitHub repository. Do not use real names or record information that you do not want publicly visible.
+Player names and activity history are public in this repository. Use a username and do not enter private information.
