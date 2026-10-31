@@ -80,6 +80,9 @@ async function savePlayer(env, id, payload) {
   if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(input.usualTime)) {
     return { status: 400, body: { error: "Invalid usual go time." } };
   }
+  if (input.status !== undefined && !["active", "out"].includes(input.status)) {
+    return { status: 400, body: { error: "Invalid player status." } };
+  }
 
   const path = `/contents/data/players/${id}.json?ref=${BRANCH}`;
   const currentResponse = await githubRequest(env, path);
@@ -103,6 +106,8 @@ async function savePlayer(env, id, payload) {
   }
 
   const authHash = current?.authHash || await sha256(payload.secret);
+  // Once a player is marked out, a later request cannot reactivate the same player record.
+  const eliminated = current?.status === "out" || input.status === "out";
   const record = {
     schemaVersion: 1,
     id,
@@ -110,6 +115,8 @@ async function savePlayer(env, id, payload) {
     usualTime: input.usualTime,
     month: "2026-11",
     days: mergeDays(current?.days, input.days),
+    status: eliminated ? "out" : "active",
+    eliminatedAt: eliminated ? (current?.eliminatedAt || input.eliminatedAt || new Date().toISOString()) : null,
     createdAt: current?.createdAt || input.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     authHash
