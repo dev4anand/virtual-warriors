@@ -65,6 +65,7 @@ async function githubRequest(env, path, options = {}) {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${env.GH_TOKEN}`,
       "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "GoTracker-Cloudflare-Worker",
       ...(options.headers || {})
     }
   });
@@ -183,7 +184,9 @@ export default {
         if (!probe.ok) {
           // Surface GitHub's diagnostic message and permission hints, but never
           // return request headers, token material, or the secret itself.
-          const githubBody = await probe.json().catch(() => ({}));
+          const responseText = await probe.text();
+          let githubBody = {};
+          try { githubBody = JSON.parse(responseText); } catch {}
           const acceptedPermissions = probe.headers.get("X-Accepted-GitHub-Permissions");
           const ssoHeader = probe.headers.get("X-GitHub-SSO");
           return json({
@@ -192,11 +195,12 @@ export default {
             tokenConfigured: true,
             githubAccess: false,
             githubStatus: probe.status,
-            githubMessage: githubBody.message || "GitHub denied the repository read request.",
+            githubMessage: githubBody.message || responseText.slice(0, 300) || "GitHub denied the repository read request.",
             requiredPermissions: acceptedPermissions || null,
             ssoRequired: Boolean(ssoHeader && /required/i.test(ssoHeader)),
             githubRequestId: probe.headers.get("X-GitHub-Request-Id") || null,
-            error: "GitHub rejected the Worker token. See githubMessage and requiredPermissions for the exact reason."
+            rateLimitRemaining: probe.headers.get("X-RateLimit-Remaining") || null,
+            error: "GitHub rejected the Worker request. See githubMessage and requiredPermissions for details."
           }, 502, origin, true);
         }
         return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin, true);
