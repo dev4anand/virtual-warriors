@@ -1,14 +1,16 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "anand",
   "name": "anand",
   "usualTime": "22:00",
-  "month": "2026-11",
-  "days": {},
+  "days": {
+    "2026-10-31": {
+      "went": false,
+      "updatedAt": "2026-10-31T09:46:31.001Z"
+    }
+  },
   "status": "active",
-  "eliminatedAt": null,
-  "completedAt": null,
   "createdAt": "2026-10-31T08:34:40.243Z",
-  "updatedAt": "2026-10-31T09:46:31.472Z",
+  "updatedAt": "2026-10-31T09:51:35.368Z",
   "authHash": "37a8a16e42eeb1f17ec505a1b0e163054b298d3d557cff0945ec37350f57ead8"
 }
