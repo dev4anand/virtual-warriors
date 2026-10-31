@@ -176,9 +176,11 @@ async function init(){
   try{
     const remote=await remotePlayer(playerId);
     if(!remote){
-      profile=null;log={};
-      client={version:CLIENT_VERSION,player:null,deviceKey:null,onboarded:false,pledgeAccepted:false,today:null};
-      store();draw();showWizard(1);return;
+      profile={...client.player,status:'active',createdAt:new Date().toISOString()};log={};
+      if(client.today?.date===today()&&isAnsweredEntry(client.today))log[today()]=client.today;
+      store();
+      if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
+      draw();openDailyQuestion();return;
     }
     profile={...remote,id:remote.id||playerId,name:remote.name||client.player.name,usualTime:remote.usualTime||client.player.usualTime,status:'active'};
     log=normalizeLog(remote.days||{});
