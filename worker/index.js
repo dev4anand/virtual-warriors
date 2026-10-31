@@ -41,10 +41,18 @@ async function sha256(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function isValidDayKey(value) {
+  const match = typeof value === "string" && value.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  if (!match) return false;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function mergeDays(previous, incoming) {
   const result = { ...(previous || {}) };
   for (const [date, entry] of Object.entries(incoming || {})) {
-    if (!/^2026-11-(0[1-9]|[12][0-9]|30)$/.test(date)) continue;
+    if (!isValidDayKey(date)) continue;
     if (!entry || typeof entry.went !== "boolean") continue;
     const old = result[date];
     if (!old || Date.parse(entry.updatedAt || 0) >= Date.parse(old.updatedAt || 0)) {
@@ -84,6 +92,30 @@ async function readPlayer(env, id) {
   return { status: 200, body: publicRecord };
 }
 
+async function readPlayers(env) {
+  const response = await githubRequest(env, `/contents/data/players?ref=${BRANCH}`);
+  if (response.status === 404) return { status: 200, body: [] };
+  if (!response.ok) {
+    const detail = await response.text();
+    return { status: response.status, body: { error: "Could not list player JSON files.", detail } };
+  }
+  const files = await response.json();
+  const playerFiles = files.filter(file =>
+    file.type === "file" &&
+    file.name.endsWith(".json") &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*\\.json$/.test(file.name)
+  );
+  const results = await Promise.all(playerFiles.map(async file => {
+    const id = file.name.slice(0, -5);
+    const result = await readPlayer(env, id);
+    return result.status === 200 ? result.body : null;
+  }));
+  return {
+    status: 200,
+    body: results.filter(Boolean).sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)))
+  };
+}
+
 async function savePlayer(env, id, payload) {
   if (!payload || typeof payload.secret !== "string" || !/^[a-f0-9]{64}$/.test(payload.secret)) {
     return { status: 400, body: { error: "Invalid player key." } };
@@ -121,19 +153,13 @@ async function savePlayer(env, id, payload) {
   }
 
   const authHash = current?.authHash || await sha256(payload.secret);
-  // Once a player is marked out, a later request cannot reactivate the same player record.
-  const eliminated = current?.status === "out" || input.status === "out";
-  const completed = !eliminated && (current?.status === "completed" || input.status === "completed");
   const record = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name: input.name.slice(0, 32),
     usualTime: input.usualTime,
-    month: "2026-11",
     days: mergeDays(current?.days, input.days),
-    status: eliminated ? "out" : completed ? "completed" : "active",
-    eliminatedAt: eliminated ? (current?.eliminatedAt || input.eliminatedAt || new Date().toISOString()) : null,
-    completedAt: completed ? (current?.completedAt || input.completedAt || new Date().toISOString()) : null,
+    status: "active",
     createdAt: current?.createdAt || input.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     authHash
@@ -224,9 +250,18 @@ export default {
       });
     }
 
+    if (request.method === "GET" && url.pathname === "/players") {
+      try {
+        const result = await readPlayers(env);
+        return json(result.body, result.status, origin);
+      } catch (error) {
+        return json({ error: error.message || "Could not list players." }, 500, origin);
+      }
+    }
+
     const match = url.pathname.match(/^\/players\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
     if (!match || !["GET", "PUT"].includes(request.method)) {
-      return json({ error: "Use GET /health, GET /players/{player-id}, or PUT /players/{player-id}." }, 404, origin);
+      return json({ error: "Use GET /health, GET /players, GET /players/{player-id}, or PUT /players/{player-id}." }, 404, origin);
     }
 
     const id = match[1];
