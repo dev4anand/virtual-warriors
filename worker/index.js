@@ -185,7 +185,18 @@ export default {
 
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "go-tracker-sync", tokenConfigured: Boolean(env.GH_TOKEN) }, 200, origin);
+      if (!env.GH_TOKEN) {
+        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: false, error: "Missing GH_TOKEN Worker secret." }, 503, origin);
+      }
+      try {
+        const probe = await githubRequest(env, `/contents/data/players/README.md?ref=${BRANCH}`);
+        if (!probe.ok) {
+          return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: "GitHub token cannot read this repository. Check repository access and Contents permission." }, 502, origin);
+        }
+        return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin);
+      } catch (error) {
+        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: error.message || "GitHub health check failed." }, 502, origin);
+      }
     }
 
     const match = url.pathname.match(/^\/players\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
