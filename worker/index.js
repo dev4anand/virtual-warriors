@@ -4,17 +4,18 @@ const BRANCH = "main";
 const ALLOWED_ORIGIN = "https://dev4anand.github.io";
 const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
 
-function json(data, status, origin) {
+function json(data, status, origin, publicHealth = false) {
+  const corsOrigin = publicHealth ? "*" : (origin === ALLOWED_ORIGIN ? ALLOWED_ORIGIN : null);
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      ...(origin === ALLOWED_ORIGIN ? {
-        "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-        "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+      ...(corsOrigin ? {
+        "Access-Control-Allow-Origin": corsOrigin,
+        "Access-Control-Allow-Methods": publicHealth ? "GET" : "GET, PUT, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
-        "Vary": "Origin"
+        "Vary": publicHealth ? undefined : "Origin"
       } : {})
     }
   });
@@ -168,6 +169,33 @@ async function savePlayer(env, id, payload) {
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    const url = new URL(request.url);
+
+    // This read-only health route is public so it can be tested from a browser
+    // address bar or Cloudflare's dashboard preview, which may not send the
+    // GitHub Pages Origin header. It reveals no credentials or player data.
+    if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/")) {
+      if (!env.GH_TOKEN) {
+        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: false, error: "Missing GH_TOKEN Worker secret." }, 503, origin, true);
+      }
+      try {
+        const probe = await githubRequest(env, `/contents/data/players/README.md?ref=${BRANCH}`);
+        if (!probe.ok) {
+          return json({
+            ok: false,
+            service: "go-tracker-sync",
+            tokenConfigured: true,
+            githubAccess: false,
+            githubStatus: probe.status,
+            error: "GitHub rejected the Worker token. Check that GH_TOKEN is a fine-grained token with Contents read and write access to this repository."
+          }, 502, origin, true);
+        }
+        return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin, true);
+      } catch (error) {
+        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: error.message || "GitHub health check failed." }, 502, origin, true);
+      }
+    }
+
     if (origin !== ALLOWED_ORIGIN) return json({ error: "Origin not allowed." }, 403, origin);
 
     if (request.method === "OPTIONS") {
@@ -181,22 +209,6 @@ export default {
           "Vary": "Origin"
         }
       });
-    }
-
-    const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/health") {
-      if (!env.GH_TOKEN) {
-        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: false, error: "Missing GH_TOKEN Worker secret." }, 503, origin);
-      }
-      try {
-        const probe = await githubRequest(env, `/contents/data/players/README.md?ref=${BRANCH}`);
-        if (!probe.ok) {
-          return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: "GitHub token cannot read this repository. Check repository access and Contents permission." }, 502, origin);
-        }
-        return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin);
-      } catch (error) {
-        return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: error.message || "GitHub health check failed." }, 502, origin);
-      }
     }
 
     const match = url.pathname.match(/^\/players\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
