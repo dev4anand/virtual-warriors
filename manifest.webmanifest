@@ -1,6 +1,6 @@
 {
-  "name": "Goon Tracker — Daily Habit Tracker",
-  "short_name": "Goon Tracker",
+  "name": "Goongle — Daily Habit Tracker",
+  "short_name": "Goongle",
   "description": "A daily habit tracker with personal streaks and a GitHub-style activity history.",
   "start_url": "./",
   "display": "standalone",

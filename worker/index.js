@@ -187,7 +187,7 @@ async function savePlayer(env, id, payload) {
   };
 
   const body = {
-    message: `Go Tracker: update ${id}`,
+    message: `Goongle: update ${id}`,
     branch: BRANCH,
     content: encodeBase64(JSON.stringify(record, null, 2))
   };

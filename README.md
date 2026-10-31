@@ -1,10 +1,10 @@
-# Goon Tracker
+# Goongle
 
 An ongoing daily habit tracker with a GitHub-style year-to-date contribution graph, personal streaks, optional calendar reminders, and a player browser.
 
 ## Daily question
 
-When a registered player opens Goon Tracker, the modal **“Did you goon today?”** appears if today's question has not been answered yet. The app uses the `Asia/Kolkata` calendar date and accepts one answer per day.
+When a registered player opens Goongle, the modal **“Did you goon today?”** appears if today's question has not been answered yet. The app uses the `Asia/Kolkata` calendar date and accepts one answer per day.
 
 - **No, I didn't goon** — saves a clean day, shown as a bright green contribution square, and extends the current streak.
 - **Yes, I did** — records only that today's question was answered. It does not store a gooned-day value and does not create a red square.
@@ -21,7 +21,7 @@ The dashboard shows the current streak, clean-day count, and total check-ins. Th
 
 ## Calendar reminders
 
-Google Calendar is optional and is used only for daily notifications/reminders. It does not store answers, calculate streaks, or control the contribution graph. Players can use Goon Tracker without connecting a calendar.
+Google Calendar is optional and is used only for daily notifications/reminders. It does not store answers, calculate streaks, or control the contribution graph. Players can use Goongle without connecting a calendar.
 
 ## Data format and synchronization
 

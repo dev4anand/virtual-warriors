@@ -1,4 +1,4 @@
-# Goon Tracker GitHub sync Worker
+# Goongle GitHub sync Worker
 
 This Cloudflare Worker keeps the GitHub token out of the public static website.
 
@@ -33,6 +33,6 @@ The browser writes to localStorage first, then syncs the daily record with the W
 
 Each player has a random device-specific key stored in browser localStorage. GitHub stores only the SHA-256 hash. Clearing browser storage loses that device key; cross-device editing requires a recovery-key feature.
 
-Google Calendar is optional and serves only as a reminder/notification channel. Check-in answers and contribution history remain in Goon Tracker.
+Google Calendar is optional and serves only as a reminder/notification channel. Check-in answers and contribution history remain in Goongle.
 
 Player names and daily history are public GitHub repository data. Use a username and do not enter private information.
