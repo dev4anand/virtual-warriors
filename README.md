@@ -4,14 +4,18 @@ A mobile-first dark-mode tracker for the November 1–30, 2026 pledge challenge.
 
 ## Daily rule
 
-The challenge question is **“Did you go today?”**
+The question **“Did you go today?”** appears in a modal when an existing player opens the site and has not answered for the current date (November 1–30, 2026, Asia/Kolkata).
 
-- **No, I didn't go** — this is a clean challenge day. The contribution square turns green and the streak increases by one.
-- **Yes, I went** — the player is eliminated from the November challenge. The current streak ends and the out-of-game screen is shown.
-- After a clean answer, click **Ask again** to open the next numbered challenge question. Every answer is a real entry, stored sequentially as November Day 1 through Day 30. This lets you complete the 30-question challenge without waiting for another calendar date.
-- The 30th **No** completes the challenge, triggers the celebration animation, and saves the player's status as `completed`.
+- **No, I didn't go** — records a clean day, turns that date's contribution square green, and continues the streak.
+- **Yes, I went** — records the answer for today and permanently marks the player as out.
+- Only one answer is accepted per calendar day. The modal appears again on the next day if that day has not yet been answered.
+- A clean answer on November 30 completes the challenge only when all 30 dates are clean.
 
-A saved Google Calendar series cannot be cancelled by a static website. If a player has already saved the series, they must delete that event in Google Calendar themselves.
+## Local and GitHub data synchronization
+
+Each answer is written to browser localStorage first, then synchronized through the Cloudflare Worker to `data/players/<player-id>.json`. On the next visit, the app reads the player record through the Worker, merges timestamped entries with local data, and uploads pending local changes. When the browser reconnects, pending data is retried.
+
+The website uses `SYNC_API` for the Worker URL. The Worker exposes `GET /health`, `GET /players/{player-id}`, and authenticated `PUT /players/{player-id}`. Store the fine-grained GitHub token only as a Cloudflare Worker secret named `GH_TOKEN`; never put it in the website or repository assets.
 
 ## First-time experience
 
@@ -42,7 +46,7 @@ The player record also stores `status: "active"`, `status: "out"`, or `status: "
 
 The static website never contains a GitHub personal access token. Deploy the Worker in `worker/` and configure `SYNC_API` in `index.html` to enable GitHub writes. Store the fine-grained GitHub token as a Cloudflare Worker secret named `GH_TOKEN`; do not put it into a public text, JSON or JavaScript file.
 
-The Worker stores a random device-specific key hash in each player record and makes an `out` status permanent for that player. Follow `worker/README.md` for deployment instructions.
+The Worker stores a random device-specific key hash in each player record and makes `out` and `completed` statuses permanent. The device key remains in that browser's localStorage; a different device can read the public record but cannot write to it without a recovery-key flow. Follow `worker/README.md` for deployment instructions.
 
 ## Google Calendar
 
