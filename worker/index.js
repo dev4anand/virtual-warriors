@@ -181,13 +181,22 @@ export default {
       try {
         const probe = await githubRequest(env, `/contents/data/players/README.md?ref=${BRANCH}`);
         if (!probe.ok) {
+          // Surface GitHub's diagnostic message and permission hints, but never
+          // return request headers, token material, or the secret itself.
+          const githubBody = await probe.json().catch(() => ({}));
+          const acceptedPermissions = probe.headers.get("X-Accepted-GitHub-Permissions");
+          const ssoHeader = probe.headers.get("X-GitHub-SSO");
           return json({
             ok: false,
             service: "go-tracker-sync",
             tokenConfigured: true,
             githubAccess: false,
             githubStatus: probe.status,
-            error: "GitHub rejected the Worker token. Check that GH_TOKEN is a fine-grained token with Contents read and write access to this repository."
+            githubMessage: githubBody.message || "GitHub denied the repository read request.",
+            requiredPermissions: acceptedPermissions || null,
+            ssoRequired: Boolean(ssoHeader && /required/i.test(ssoHeader)),
+            githubRequestId: probe.headers.get("X-GitHub-Request-Id") || null,
+            error: "GitHub rejected the Worker token. See githubMessage and requiredPermissions for the exact reason."
           }, 502, origin, true);
         }
         return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin, true);
