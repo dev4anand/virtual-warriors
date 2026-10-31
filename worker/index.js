@@ -12,7 +12,7 @@ function json(data, status, origin) {
       "Cache-Control": "no-store",
       ...(origin === ALLOWED_ORIGIN ? {
         "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-        "Access-Control-Allow-Methods": "PUT, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
         "Vary": "Origin"
       } : {})
@@ -67,6 +67,19 @@ async function githubRequest(env, path, options = {}) {
       ...(options.headers || {})
     }
   });
+}
+
+async function readPlayer(env, id) {
+  const response = await githubRequest(env, `/contents/data/players/${id}.json?ref=${BRANCH}`);
+  if (response.status === 404) return { status: 404, body: { error: "Player not found." } };
+  if (!response.ok) {
+    const detail = await response.text();
+    return { status: response.status, body: { error: "Could not read the player JSON from GitHub.", detail } };
+  }
+  const file = await response.json();
+  const record = JSON.parse(decodeBase64(file.content));
+  const { authHash, ...publicRecord } = record;
+  return { status: 200, body: publicRecord };
 }
 
 async function savePlayer(env, id, payload) {
@@ -162,7 +175,7 @@ export default {
         status: 204,
         headers: {
           "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-          "Access-Control-Allow-Methods": "PUT, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Max-Age": "86400",
           "Vary": "Origin"
@@ -171,22 +184,30 @@ export default {
     }
 
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/health") {
+      return json({ ok: true, service: "go-tracker-sync", tokenConfigured: Boolean(env.GH_TOKEN) }, 200, origin);
+    }
+
     const match = url.pathname.match(/^\/players\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
-    if (request.method !== "PUT" || !match) {
-      return json({ error: "Use PUT /players/{player-id}." }, 404, origin);
+    if (!match || !["GET", "PUT"].includes(request.method)) {
+      return json({ error: "Use GET /health, GET /players/{player-id}, or PUT /players/{player-id}." }, 404, origin);
     }
 
     const id = match[1];
     if (id.length > 24) return json({ error: "Player ID is too long." }, 400, origin);
 
-    let payload;
     try {
-      payload = await request.json();
-    } catch {
-      return json({ error: "Request body must be JSON." }, 400, origin);
-    }
+      if (request.method === "GET") {
+        const result = await readPlayer(env, id);
+        return json(result.body, result.status, origin);
+      }
 
-    try {
+      let payload;
+      try {
+        payload = await request.json();
+      } catch {
+        return json({ error: "Request body must be JSON." }, 400, origin);
+      }
       const result = await savePlayer(env, id, payload);
       return json(result.body, result.status, origin);
     } catch (error) {
