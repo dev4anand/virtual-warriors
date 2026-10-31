@@ -49,17 +49,33 @@ function isValidDayKey(value) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+function normalizeDayEntry(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const clean = entry.clean === true || entry.went === false;
+  const answered = entry.answered === true || clean || typeof entry.went === "boolean";
+  if (!answered) return null;
+  const normalized = {
+    answered: true,
+    updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString()
+  };
+  if (clean) normalized.clean = true;
+  return normalized;
+}
+
 function mergeDays(previous, incoming) {
-  const result = { ...(previous || {}) };
+  const result = {};
+  for (const [date, entry] of Object.entries(previous || {})) {
+    if (!isValidDayKey(date)) continue;
+    const normalized = normalizeDayEntry(entry);
+    if (normalized) result[date] = normalized;
+  }
   for (const [date, entry] of Object.entries(incoming || {})) {
     if (!isValidDayKey(date)) continue;
-    if (!entry || typeof entry.went !== "boolean") continue;
+    const normalized = normalizeDayEntry(entry);
+    if (!normalized) continue;
     const old = result[date];
-    if (!old || Date.parse(entry.updatedAt || 0) >= Date.parse(old.updatedAt || 0)) {
-      result[date] = {
-        went: entry.went,
-        updatedAt: entry.updatedAt || new Date().toISOString()
-      };
+    if (!old || Date.parse(normalized.updatedAt) >= Date.parse(old.updatedAt || 0)) {
+      result[date] = normalized;
     }
   }
   return result;
@@ -89,7 +105,12 @@ async function readPlayer(env, id) {
   const file = await response.json();
   const record = JSON.parse(decodeBase64(file.content));
   const { authHash, ...publicRecord } = record;
-  return { status: 200, body: publicRecord };
+  // Normalize legacy data: clean days remain green; old positive answers are
+  // retained only as answered metadata and never become red contribution cells.
+  return {
+    status: 200,
+    body: { ...publicRecord, days: mergeDays({}, record.days || {}), schemaVersion: 2, status: "active" }
+  };
 }
 
 async function readPlayers(env) {
