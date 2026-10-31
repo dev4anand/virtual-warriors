@@ -1,46 +1,54 @@
 # Go Tracker — November 2026
 
-A mobile-first, dark-mode static site for a daily November check-in challenge. It uses browser storage for an offline-first experience and separate public JSON files in this repository for player-by-player sync.
+A mobile-first dark static site for the November 2026 daily check-in challenge.
 
 ## Features
 
-- GitHub-contribution-style activity grid for November 1–30, 2026.
-- Daily “Did you go today?” check-in, streak count and a small celebration animation.
-- Public read-only crew cards for other players.
-- Each player writes only to `data/players/<handle>.json`; the app does not update other players' files.
-- Local browser storage plus optional GitHub sync.
-- Google Calendar link that pre-fills a daily November event at the player's saved usual time.
-- Responsive layout designed mobile-first.
+- GitHub-contribution-style calendar for November 1–30, 2026.
+- Setup asks only for a display name and usual go time.
+- Player ID is derived automatically from the name.
+- Existing public player JSON is looked up by that ID; matching data and check-ins are restored.
+- New names start a new local profile.
+- Daily yes/no check-in, streak calculation, progress stats and celebration animation.
+- Read-only crew cards for public JSON records.
+- Browser localStorage and an offline app shell.
+- A prefilled Google Calendar daily event link at the saved usual time.
 
 ## Deploy with GitHub Pages
 
 1. Open **Settings → Pages** in this repository.
-2. Under **Build and deployment**, select **GitHub Actions** as the source.
-3. Pushes to `main` will run the included deployment workflow.
-4. Once the workflow succeeds, open the Pages URL shown in the workflow deployment.
+2. Set **Build and deployment → Source** to **GitHub Actions**.
+3. The `.github/workflows/pages.yml` workflow deploys the static app on pushes to `main`.
 
 Expected URL: https://dev4anand.github.io/virtual-warriors/
 
-## Enable shared GitHub sync
+## Data storage and security
 
-Each player needs their own GitHub fine-grained personal access token:
+Player records are public JSON files at `data/players/<name-derived-id>.json`. Do not store private information in them.
 
-1. Create a fine-grained token restricted to `dev4anand/virtual-warriors`.
-2. Grant **Contents: Read and write**.
-3. In Go Tracker, open Settings and paste the token.
-4. Choose whether to remember it on this browser.
+The current public static frontend can read existing player records from GitHub. New check-ins are saved in the visitor's browser only. It does not push writes to GitHub because GitHub write credentials must never be exposed to browser code or committed to a public file.
 
-The token is used from the browser to create or update only the signed-in player's JSON path. Never paste a token into a shared computer. A static frontend cannot enforce per-player permissions: anyone who possesses a repository write token can technically edit repository content. For strict ownership/security, a backend or GitHub OAuth service would be required.
+**Do not create a `.txt`, `.json`, or JavaScript file in this public repository containing a GitHub personal access token.** Anyone can download it and use the token with its granted permissions.
 
-Without a token, check-ins are saved locally in that browser. They are not shared with other devices or players. Once sync is enabled, the public player cards read the individual JSON files from this repository.
+A GitHub Actions repository secret is safer than a committed text file, but it is visible only to workflow runs; the static website's JavaScript cannot read it. To enable shared writes from the website, add a small serverless API (for example a Cloudflare Worker) and store the token as a server-side secret there. The API should validate the player and allow writes only to that player's JSON path.
+
+## Generate a fine-grained GitHub token (for a server-side secret)
+
+1. Open https://github.com/settings/personal-access-tokens/new
+2. Choose **Fine-grained token**.
+3. Set **Resource owner** to your GitHub account.
+4. Under **Repository access**, choose **Only select repositories** and select `virtual-warriors`.
+5. Under **Repository permissions → Contents**, choose **Read and write**.
+6. Create the token and copy it once.
+7. Store it as a secret in the serverless service (recommended), not in this repository's files.
+
+If you store it as a GitHub Actions secret instead, open **Repository → Settings → Secrets and variables → Actions → New repository secret**, name it `GH_TOKEN`, and paste the token. Workflows can read it using `${{ secrets.GH_TOKEN }}`, but client-side website code cannot.
 
 ## Google Calendar reminder
 
-After saving a usual go time, click **Add daily Google Calendar reminder**. Google Calendar opens a pre-filled daily event for November 1–30, 2026, titled “Did you go today?” and includes the deployed site URL in its description. Confirm and save the event in Google Calendar. Calendar notifications follow the user's Google Calendar default notification settings.
+After setting a usual go time, click **Add daily Google Calendar reminder**. Google Calendar opens a prefilled daily event from November 1–30, 2026, titled “Did you go today?” with the deployed site URL in its description. Confirm and save the event in Calendar.
 
-## Data shape
-
-Each player has an independent JSON document similar to:
+## Example player record
 
 ```json
 {
