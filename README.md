@@ -1,53 +1,52 @@
-# Go Tracker — November 2026
+# Goon Tracker
 
-A mobile-first dark-mode tracker for the November 1–30, 2026 pledge challenge.
+A simple, ongoing daily habit tracker with personal streaks, a rolling 12-month GitHub-style contribution history, and a community player browser.
 
-## Daily rule
+## Daily check-in
 
-The question **“Did you go today?”** appears in a modal when an existing player opens the site and has not answered for the current date (November 1–30, 2026, Asia/Kolkata).
+When an existing player opens Goon Tracker, the modal **“Did you goon today?”** appears if they have not answered for the current date in the `Asia/Kolkata` timezone.
 
-- **No, I didn't go** — records a clean day, turns that date's contribution square green, and continues the streak.
-- **Yes, I went** — records the answer for today and permanently marks the player as out.
-- Only one answer is accepted per calendar day. The modal appears again on the next day if that day has not yet been answered.
-- A clean answer on November 30 completes the challenge only when all 30 dates are clean.
+- **No, I didn't goon** — saves a clean green day and extends the current streak.
+- **Yes, I gooned** — saves a red day and resets the current streak. The player is not eliminated and can start a new streak the next day.
+- Only one answer is accepted per calendar date. The modal appears again on the next date until that date is answered.
+- The streak continues across month and year boundaries. Activity history is keyed by `YYYY-MM-DD`.
 
-## Local and GitHub data synchronization
+## Activity and community
 
-Each answer is written to browser localStorage first, then synchronized through the Cloudflare Worker to `data/players/<player-id>.json`. On the next visit, the app reads the player record through the Worker, merges timestamped entries with local data, and uploads pending local changes. When the browser reconnects, pending data is retried.
+The personal activity graph shows the most recent 365 days in a GitHub-style contribution grid. The **View players** button opens a modal with a dropdown to select another player and view their contribution history, clean-day count, gooned-day count, and current streak.
 
-The website uses `SYNC_API` for the Worker URL. The Worker exposes `GET /health`, `GET /players/{player-id}`, and authenticated `PUT /players/{player-id}`. Store the fine-grained GitHub token only as a Cloudflare Worker secret named `GH_TOKEN`; never put it in the website or repository assets.
+## Local storage and GitHub synchronization
 
-## First-time experience
+Every answer is first saved to browser `localStorage`, then sent to the Cloudflare Worker. When the site opens, it loads the public player JSON, merges the timestamped daily entries, and synchronizes the merged record. Pending changes are retried when the browser comes back online.
 
-1. Welcome to Go Tracker.
-2. Read and acknowledge the pledge.
-3. Enter a username and usual go time. The app looks for an existing public player JSON file using the name-derived ID.
-4. Add the prefilled daily Google Calendar reminder for November 1–30, 2026.
+Player records are stored in:
 
-Returning visitors who have not answered for the current challenge date see the daily question modal when the site opens.
+`data/players/<player-id>.json`
 
-## GitHub Pages deployment
+The Worker exposes:
+- `GET /health` — checks Worker and GitHub connectivity.
+- `GET /players` — lists public player records without returning the private key hash.
+- `GET /players/{player-id}` — reads one public player record.
+- `PUT /players/{player-id}` — validates the private device key and creates or updates the record.
 
-1. Open **Settings → Pages**.
-2. Set **Build and deployment → Source** to **GitHub Actions**.
-3. The workflow in `.github/workflows/pages.yml` deploys the site on pushes to `main`.
+The static website does not contain a GitHub token. The Worker uses the Cloudflare Production secret `GH_TOKEN`. The token needs Contents read and write permission for this repository.
 
-Live URL: https://dev4anand.github.io/virtual-warriors/
+Each player has a random device-specific key stored in that browser's localStorage; the JSON record stores only its SHA-256 hash. Clearing local site data loses that device key. Another device can view public player records but cannot write to an existing profile without a recovery-key mechanism.
 
-## Player data
+## First-time setup
 
-Public player records are stored separately at `data/players/<name-derived-id>.json`. Each daily `days` entry uses:
-- `went: false` for a clean day (green square; contributes to streak).
-- `went: true` for a day the player went (red square; ends the challenge).
+1. Read and accept the pledge.
+2. Enter a username and usual reminder time.
+3. The app checks for an existing player record and restores its history when found.
+4. Optionally save the recurring daily Google Calendar reminder.
 
-The player record also stores `status: "active"`, `status: "out"`, or `status: "completed"`, with `eliminatedAt` or `completedAt` timestamps as appropriate.
+## Deployment
 
-## Secure GitHub sync
+- Website: https://dev4anand.github.io/virtual-warriors/
+- Worker: https://go-tracker-sync.chknhntr123.workers.dev
+- Website source: GitHub Pages via the workflow in `.github/workflows/pages.yml`.
+- Worker source: `worker/index.js`; deploy the updated source in Cloudflare after changing it.
 
-The static website never contains a GitHub personal access token. Deploy the Worker in `worker/` and configure `SYNC_API` in `index.html` to enable GitHub writes. Store the fine-grained GitHub token as a Cloudflare Worker secret named `GH_TOKEN`; do not put it into a public text, JSON or JavaScript file.
+## Privacy note
 
-The Worker stores a random device-specific key hash in each player record and makes `out` and `completed` statuses permanent. The device key remains in that browser's localStorage; a different device can read the public record but cannot write to it without a recovery-key flow. Follow `worker/README.md` for deployment instructions.
-
-## Google Calendar
-
-The onboarding calendar step opens a prefilled daily recurring event for November 1–30, 2026, at the saved usual go time. Its description includes the deployed website URL. The player must confirm and save the event in Google Calendar.
+Player names, daily answers, and contribution history are stored in public JSON files in this GitHub repository. Do not use real names or record information that you do not want publicly visible.
