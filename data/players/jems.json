@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "id": "jems",
+  "name": "Jems",
+  "usualTime": "19:00",
+  "days": {},
+  "status": "active",
+  "createdAt": "2026-10-31T11:09:50.247Z",
+  "updatedAt": "2026-10-31T11:09:51.628Z",
+  "authHash": "15dfff87ad53a16e6ef76fce0c6f7d95625f98364a82ce05d70931b3362484e5"
+}
