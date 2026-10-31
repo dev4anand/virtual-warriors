@@ -187,7 +187,7 @@ window.addEventListener('focus',refreshDailyDate);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
 setInterval(refreshDailyDate,60000);
 function shouldAskDaily(){return!!profile&&client.onboarded&&!!client.deviceKey&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
-function openDailyQuestion(){if(!shouldAskDaily())return;$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
+function openDailyQuestion(){if(!shouldAskDaily()){$('daily-modal').hidden=true;return}$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
 async function answerDaily(clean){await checkin(clean)}
 async function init(){
   await checkWorker();
