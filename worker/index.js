@@ -1,0 +1,187 @@
+const OWNER = "dev4anand";
+const REPO = "virtual-warriors";
+const BRANCH = "main";
+const ALLOWED_ORIGIN = "https://dev4anand.github.io";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+
+function json(data, status, origin) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...(origin === ALLOWED_ORIGIN ? {
+        "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+        "Access-Control-Allow-Methods": "PUT, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Vary": "Origin"
+      } : {})
+    }
+  });
+}
+
+function decodeBase64(value) {
+  const binary = atob(value.replace(/\n/g, ""));
+  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function encodeBase64(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function sha256(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function mergeDays(previous, incoming) {
+  const result = { ...(previous || {}) };
+  for (const [date, entry] of Object.entries(incoming || {})) {
+    if (!/^2026-11-(0[1-9]|[12][0-9]|30)$/.test(date)) continue;
+    if (!entry || typeof entry.went !== "boolean") continue;
+    const old = result[date];
+    if (!old || Date.parse(entry.updatedAt || 0) >= Date.parse(old.updatedAt || 0)) {
+      result[date] = {
+        went: entry.went,
+        updatedAt: entry.updatedAt || new Date().toISOString()
+      };
+    }
+  }
+  return result;
+}
+
+async function githubRequest(env, path, options = {}) {
+  if (!env.GH_TOKEN) throw new Error("Missing GH_TOKEN Worker secret.");
+  return fetch(API + path, {
+    ...options,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${env.GH_TOKEN}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(options.headers || {})
+    }
+  });
+}
+
+async function savePlayer(env, id, payload) {
+  if (!payload || typeof payload.secret !== "string" || !/^[a-f0-9]{64}$/.test(payload.secret)) {
+    return { status: 400, body: { error: "Invalid player key." } };
+  }
+  const input = payload.record;
+  if (!input || input.id !== id || typeof input.name !== "string" || typeof input.usualTime !== "string") {
+    return { status: 400, body: { error: "Invalid player profile." } };
+  }
+  if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(input.usualTime)) {
+    return { status: 400, body: { error: "Invalid usual go time." } };
+  }
+
+  const path = `/contents/data/players/${id}.json?ref=${BRANCH}`;
+  const currentResponse = await githubRequest(env, path);
+  let current = null;
+  let sha = null;
+
+  if (currentResponse.status === 200) {
+    const file = await currentResponse.json();
+    current = JSON.parse(decodeBase64(file.content));
+    sha = file.sha;
+    if (!current.authHash) {
+      return { status: 409, body: { error: "This public profile has no private player key yet. It must be migrated by the repository owner before writes are enabled." } };
+    }
+    const suppliedHash = await sha256(payload.secret);
+    if (suppliedHash !== current.authHash) {
+      return { status: 403, body: { error: "This browser is not linked to that player profile." } };
+    }
+  } else if (currentResponse.status !== 404) {
+    const detail = await currentResponse.text();
+    return { status: currentResponse.status, body: { error: "Could not read the player JSON from GitHub.", detail } };
+  }
+
+  const authHash = current?.authHash || await sha256(payload.secret);
+  const record = {
+    schemaVersion: 1,
+    id,
+    name: input.name.slice(0, 32),
+    usualTime: input.usualTime,
+    month: "2026-11",
+    days: mergeDays(current?.days, input.days),
+    createdAt: current?.createdAt || input.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    authHash
+  };
+
+  const body = {
+    message: `Go Tracker: update ${id}`,
+    branch: BRANCH,
+    content: encodeBase64(JSON.stringify(record, null, 2))
+  };
+  if (sha) body.sha = sha;
+
+  const writeResponse = await githubRequest(env, `/contents/data/players/${id}.json`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!writeResponse.ok) {
+    const detail = await writeResponse.text();
+    return { status: writeResponse.status, body: { error: "GitHub could not save this player record.", detail } };
+  }
+
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      id,
+      name: record.name,
+      updatedAt: record.updatedAt
+    }
+  };
+}
+
+export default {
+  async fetch(request, env) {
+    const origin = request.headers.get("Origin") || "";
+    if (origin !== ALLOWED_ORIGIN) return json({ error: "Origin not allowed." }, 403, origin);
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+          "Access-Control-Allow-Methods": "PUT, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "86400",
+          "Vary": "Origin"
+        }
+      });
+    }
+
+    const url = new URL(request.url);
+    const match = url.pathname.match(/^\/players\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
+    if (request.method !== "PUT" || !match) {
+      return json({ error: "Use PUT /players/{player-id}." }, 404, origin);
+    }
+
+    const id = match[1];
+    if (id.length > 24) return json({ error: "Player ID is too long." }, 400, origin);
+
+    let payload;
+    try {
+      payload = await request.json();
+    } catch {
+      return json({ error: "Request body must be JSON." }, 400, origin);
+    }
+
+    try {
+      const result = await savePlayer(env, id, payload);
+      return json(result.body, result.status, origin);
+    } catch (error) {
+      return json({ error: error.message || "Unexpected sync error." }, 500, origin);
+    }
+  }
+};
