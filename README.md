@@ -24,7 +24,7 @@ The website uses `SYNC_API` for the Worker URL. The Worker exposes `GET /health`
 3. Enter a username and usual go time. The app looks for an existing public player JSON file using the name-derived ID.
 4. Add the prefilled daily Google Calendar reminder for November 1–30, 2026.
 
-Returning visitors go directly to the daily check-in.
+Returning visitors who have not answered for the current challenge date see the daily question modal when the site opens.
 
 ## GitHub Pages deployment
 
