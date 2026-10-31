@@ -1,7 +1,7 @@
 {
-  "name": "Go Tracker — November 2026",
-  "short_name": "Go Tracker",
-  "description": "A daily November go check-in and streak tracker.",
+  "name": "Goon Tracker — Daily Habit Tracker",
+  "short_name": "Goon Tracker",
+  "description": "A daily habit tracker with personal streaks and a GitHub-style activity history.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0d1117",
