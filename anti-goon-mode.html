@@ -80,8 +80,8 @@ footer{position:relative;z-index:1;text-align:center;padding:0 20px 25px;color:#
   <div class="phase" id="phase" aria-live="polite">A quiet moment starts with one breath</div>
   <div class="support" id="support">Breathe in gently for 4 seconds · breathe out slowly for 6 seconds</div>
   <div class="controls">
-    <button class="play" id="play" type="button">▶ &nbsp; Start peaceful session</button>
-    <button class="stop" id="stop" type="button" hidden>Pause</button>
+    <button class="play" id="play" type="button" aria-pressed="false">▶ &nbsp; Start peaceful session</button>
+    <button class="stop" id="stop" type="button" hidden>End session</button>
     <label class="volume" id="volume-wrap" hidden>Sound <input id="volume" type="range" min="0" max="60" value="24" aria-label="Sound volume"></label>
   </div>
   <p class="sound-note">An original, soft ambient soundscape is created in your browser. Use headphones at a comfortable volume, or enjoy the visuals in silence.</p>
@@ -190,8 +190,10 @@ function pauseVisuals(){
 async function begin(){
   if(running)return;
   running=true;
-  $('play').textContent='Ⅱ  Resume / pause session';
+  $('play').textContent='Ⅱ  Pause session';
+  $('play').setAttribute('aria-pressed','true');
   $('stop').hidden=false;
+  $('stop').textContent='×  End session';
   $('volume-wrap').hidden=false;
   startVisuals();
   try{await startSound()}catch(error){console.warn('Could not start ambient audio:',error);$('support').textContent='Sound could not start. Check your browser audio permission; the breathing visual is active.'}
@@ -202,7 +204,8 @@ function pause(){
   running=false;
   pauseVisuals();stopSound();
   $('play').textContent='▶  Resume peaceful session';
-  $('stop').textContent='Resume session';
+  $('play').setAttribute('aria-pressed','false');
+  $('stop').textContent='×  End session';
 }
 function endSession(){
   running=false;
@@ -210,11 +213,12 @@ function endSession(){
   $('stop').hidden=true;
   $('volume-wrap').hidden=true;
   $('play').textContent='▶  Start peaceful session';
+  $('play').setAttribute('aria-pressed','false');
   $('phase').textContent='A quiet moment starts with one breath';
   $('support').textContent='Breathe in gently for 4 seconds · breathe out slowly for 6 seconds';
 }
-$('play').addEventListener('click',begin);
-$('stop').addEventListener('click',()=>running?pause():begin());
+$('play').addEventListener('click',()=>running?pause():begin());
+$('stop').addEventListener('click',endSession);
 $('volume').addEventListener('input',()=>{
   if(ctx&&master&&running)master.gain.setTargetAtTime(Number($('volume').value)/100,ctx.currentTime,.15);
 });
