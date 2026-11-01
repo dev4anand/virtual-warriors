@@ -450,6 +450,17 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
  .anti-mode-link{width:100%;padding:13px}
 }
 
+
+/* Today's answer can be corrected after submission */
+.update-today{
+ display:inline-flex;align-items:center;gap:6px;margin-top:13px;
+ padding:9px 13px;border:1px solid #40566b;border-radius:22px;
+ background:#202b37;color:#9fcaff;font-size:10px;font-weight:750;
+ cursor:pointer;transition:background .18s,border-color .18s,color .18s;
+}
+.update-today:hover{background:#26394b;border-color:#69b7ff;color:#d6ebff}
+.update-today:focus-visible{outline:2px solid #69b7ff;outline-offset:3px}
+
 </style></head><body>
 <header class="top">
   <div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#000000"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#39d353" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#58a6ff" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#f0c75e"/></svg><span>Goongle</span></div>
@@ -553,25 +564,40 @@ function activityMarkup(data){const current=today(),year=current.slice(0,4),year
 function scrollHeatToToday(root){if(!root)return;requestAnimationFrame(()=>{root.scrollLeft=root.scrollWidth})}
 function drawHeat(){$('heat').innerHTML=activityMarkup(log);scrollHeatToToday($('heat'))}
 function draw(){const clean=cleanDays(log),total=answeredDays(log),streak=streakOf(log);$('my-title').textContent=(profile?.name||'Your')+' activity · '+today().slice(0,4);$('count-pill').textContent=total+' check-in'+(total===1?'':'s');$('caption').textContent='January 1 – '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'short',year:'numeric'})+' · '+clean+' clean day'+(clean===1?'':'s');$('streak').innerHTML=streak+' <small>days</small>';$('went').textContent=clean;$('progress').textContent=total;$('streak-note').textContent=streak?'You are on a '+streak+' day streak. Keep it going!':'Your next clean day starts a new streak.';drawHeat();drawQuestion();$('calendar').hidden=!profile;if(profile)$('calendar').href=calendarLink()}
-function drawQuestion(){let html='';const date=today(),entry=log[date];$('today').textContent=new Date(date+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,weekday:'short',day:'numeric',month:'long',year:'numeric'}).toUpperCase();if(!profile)html='<h2>Set up your player profile.</h2><p class="desc">Your daily question will be ready after registration.</p><button class="primary" id="setup" type="button">Create your profile →</button>';else if(isAnsweredEntry(entry))html='<div class="result"><div class="emoji">'+(isCleanEntry(entry)?'🌱':'✓')+'</div><div><h2>'+(isCleanEntry(entry)?'You stayed on track today.':'Today’s check-in is complete.')+'</h2><p>'+(isCleanEntry(entry)?'Your current streak is '+streakOf(log)+' day(s).':'Your check-in is saved. Your activity graph only highlights clean days.')+'</p></div></div>';else html='<h2>Your daily check-in is ready.</h2><p class="desc">The question appears when you open Goongle. You can submit one honest answer today.</p>';$('question').innerHTML=html;if($('setup'))$('setup').onclick=showModal}function blast(went){for(let i=0;i<(went?32:17);i++){let e=document.createElement('i');e.className='confetti';e.style.left=Math.random()*100+'vw';e.style.background=went?['#3fb950','#8be9a1','#58a6ff','#d29922'][i%4]:['#58a6ff','#8b98a8','#d29922'][i%3];e.style.setProperty('--x',(Math.random()*180-90)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),1900)}}
+function drawQuestion(){
+  let html='';
+  const date=today(),entry=log[date];
+  $('today').textContent=new Date(date+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,weekday:'short',day:'numeric',month:'long',year:'numeric'}).toUpperCase();
+  if(!profile){
+    html='<h2>Set up your player profile.</h2><p class="desc">Your daily question will be ready after registration.</p><button class="primary" id="setup" type="button">Create your profile →</button>';
+  }else if(isAnsweredEntry(entry)){
+    html='<div class="result"><div class="emoji">'+(isCleanEntry(entry)?'🌱':'✓')+'</div><div><h2>'+(isCleanEntry(entry)?'You stayed on track today.':'Today’s check-in is complete.')+'</h2><p>'+(isCleanEntry(entry)?'Your current streak is '+streakOf(log)+' day(s).':'Your check-in is saved. Your activity graph only highlights clean days.')+'</p></div></div><button class="change update-today" id="update-today" type="button">↻ &nbsp; Update today’s status</button>';
+  }else{
+    html='<h2>Your daily check-in is ready.</h2><p class="desc">The question appears when you open Goongle. You can submit one honest answer today.</p>';
+  }
+  $('question').innerHTML=html;
+  if($('setup'))$('setup').onclick=showModal;
+  if($('update-today'))$('update-today').onclick=()=>openDailyQuestion(true);
+}function blast(went){for(let i=0;i<(went?32:17);i++){let e=document.createElement('i');e.className='confetti';e.style.left=Math.random()*100+'vw';e.style.background=went?['#3fb950','#8be9a1','#58a6ff','#d29922'][i%4]:['#58a6ff','#8b98a8','#d29922'][i%3];e.style.setProperty('--x',(Math.random()*180-90)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),1900)}}
 function losingAnimation(){const faces=['💀','🥀','😵','🪦','😭'];for(let i=0;i<22;i++){const e=document.createElement('span');e.className='confetti';e.textContent=faces[i%faces.length];e.style.left=Math.random()*100+'vw';e.style.width='auto';e.style.height='auto';e.style.background='transparent';e.style.fontSize=(18+Math.random()*12)+'px';e.style.setProperty('--x',(Math.random()*160-80)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),2100)}}
 function celebrateCompletion(){blast(true);const colors=['#3fb950','#8be9a1','#58a6ff','#d29922','#f778ba','#fff'];for(let i=0;i<70;i++){const e=document.createElement('i');e.className='confetti';e.style.left=Math.random()*100+'vw';e.style.background=colors[i%colors.length];e.style.width=(5+Math.random()*7)+'px';e.style.height=(8+Math.random()*12)+'px';e.style.setProperty('--x',(Math.random()*260-130)+'px');e.style.animationDuration=(1.5+Math.random()*1.5)+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),3300)}const icons=['🎉','🏆','✨','🎊'];for(let i=0;i<18;i++){const e=document.createElement('span');e.className='confetti';e.textContent=icons[i%icons.length];e.style.left=Math.random()*100+'vw';e.style.width='auto';e.style.height='auto';e.style.background='transparent';e.style.fontSize=(20+Math.random()*18)+'px';e.style.setProperty('--x',(Math.random()*200-100)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}}
 async function checkin(clean){
-  const date=today();
-  if(!profile||client.player?.id!==profile.id||isAnsweredEntry(log[date])||$('daily-modal').hidden)return;
+  const date=today(),wasEditing=editingToday;
+  if(!profile||client.player?.id!==profile.id||(!wasEditing&&isAnsweredEntry(log[date]))||$('daily-modal').hidden)return;
   const entry={answered:true,updatedAt:new Date().toISOString()};
   if(clean)entry.clean=true;
   log[date]=entry;
   client.today={date,answered:true,...(clean?{clean:true}:{}),updatedAt:entry.updatedAt};
+  editingToday=false;
   store();$('daily-modal').hidden=true;draw();
-  if(clean){blast(true);toast('You stayed on track today. Streak: '+streakOf(log)+' day(s).')}
-  else{toast('Check-in saved. Your activity graph only highlights clean days.')}
+  if(clean){blast(true);toast(wasEditing?'Today’s status updated. Streak: '+streakOf(log)+' day(s).':'You stayed on track today. Streak: '+streakOf(log)+' day(s).')}
+  else{toast(wasEditing?'Today’s status updated. Your activity graph only highlights clean days.':'Check-in saved. Your activity graph only highlights clean days.')}
   if(client.deviceKey){
     const synced=await syncCurrentPlayer();
-    if(!synced.ok)toast('Current-day check-in kept on this device. Sync pending: '+synced.reason);
+    if(!synced.ok)toast('Today’s answer is saved on this device. GitHub sync pending: '+synced.reason);
   }else{
     status('Local check-in only');
-    toast('Saved for today on this device. Profile sync key is unavailable, so this answer will not sync.');
+    toast('Updated for today on this device. This answer will not sync to GitHub without a device key.');
   }
   await drawPlayers();
 }
@@ -619,9 +645,10 @@ $('settings').onclick=()=>showWizard(3);$('close').onclick=()=>{if(client.onboar
 
 
 
-$('daily-no').onclick=()=>answerDaily(true);$('daily-yes').onclick=()=>answerDaily(false);$('daily-later').onclick=()=>$('daily-modal').hidden=true;
+function closeDailyQuestion(){editingToday=false;$('daily-modal').hidden=true}
+$('daily-no').onclick=()=>answerDaily(true);$('daily-yes').onclick=()=>answerDaily(false);$('daily-later').onclick=closeDailyQuestion;
 $('view-players').onclick=async()=>{$('players-modal').hidden=false;await drawPlayers()};$('close-players').onclick=()=>$('players-modal').hidden=true;$('player-select').onchange=renderSelectedPlayer;$('players-modal').onclick=e=>{if(e.target===$('players-modal'))$('players-modal').hidden=true};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)$('daily-modal').hidden=true;else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)closeDailyQuestion();else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
 window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}else status('Local only')});
 let activeDailyDate=today(),dailyDateRefreshRunning=false;
 async function refreshDailyDate(){
@@ -644,7 +671,25 @@ window.addEventListener('focus',refreshDailyDate);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
 setInterval(refreshDailyDate,60000);
 function shouldAskDaily(){return!!profile&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
-function openDailyQuestion(){if(!shouldAskDaily()){$('daily-modal').hidden=true;return}$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
+let editingToday=false;
+function openDailyQuestion(edit=false){
+  const current=today(),dateLabel=new Date(current+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});
+  if(edit){
+    if(!profile||!isAnsweredEntry(log[current]))return;
+    editingToday=true;
+    $('daily-title').textContent='Update today’s status';
+    $('daily-day').textContent='UPDATE · '+dateLabel.toUpperCase();
+    $('daily-later').textContent='Cancel';
+  }else{
+    if(!shouldAskDaily()){editingToday=false;$('daily-modal').hidden=true;return}
+    editingToday=false;
+    $('daily-title').textContent='Did you goon today?';
+    $('daily-day').textContent='TODAY · '+dateLabel.toUpperCase();
+    $('daily-later').textContent='Close for now';
+  }
+  $('daily-modal').hidden=false;
+  setTimeout(()=>$('daily-no').focus(),40);
+}
 async function answerDaily(clean){await checkin(clean)}
 async function init(){
   await checkWorker();
