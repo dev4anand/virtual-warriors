@@ -520,7 +520,7 @@ function losingAnimation(){const faces=['💀','🥀','😵','🪦','😭'];for(
 function celebrateCompletion(){blast(true);const colors=['#3fb950','#8be9a1','#58a6ff','#d29922','#f778ba','#fff'];for(let i=0;i<70;i++){const e=document.createElement('i');e.className='confetti';e.style.left=Math.random()*100+'vw';e.style.background=colors[i%colors.length];e.style.width=(5+Math.random()*7)+'px';e.style.height=(8+Math.random()*12)+'px';e.style.setProperty('--x',(Math.random()*260-130)+'px');e.style.animationDuration=(1.5+Math.random()*1.5)+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),3300)}const icons=['🎉','🏆','✨','🎊'];for(let i=0;i<18;i++){const e=document.createElement('span');e.className='confetti';e.textContent=icons[i%icons.length];e.style.left=Math.random()*100+'vw';e.style.width='auto';e.style.height='auto';e.style.background='transparent';e.style.fontSize=(20+Math.random()*18)+'px';e.style.setProperty('--x',(Math.random()*200-100)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}}
 async function checkin(clean){
   const date=today();
-  if(!profile||!client.deviceKey||client.player?.id!==profile.id||isAnsweredEntry(log[date])||$('daily-modal').hidden)return;
+  if(!profile||!client.onboarded||client.player?.id!==profile.id||isAnsweredEntry(log[date])||$('daily-modal').hidden)return;
   const entry={answered:true,updatedAt:new Date().toISOString()};
   if(clean)entry.clean=true;
   log[date]=entry;
@@ -528,8 +528,13 @@ async function checkin(clean){
   store();$('daily-modal').hidden=true;draw();
   if(clean){blast(true);toast('You stayed on track today. Streak: '+streakOf(log)+' day(s).')}
   else{toast('Check-in saved. Your activity graph only highlights clean days.')}
-  const synced=await syncCurrentPlayer();
-  if(!synced.ok)toast('Current-day check-in kept on this device. Sync pending: '+synced.reason);
+  if(client.deviceKey){
+    const synced=await syncCurrentPlayer();
+    if(!synced.ok)toast('Current-day check-in kept on this device. Sync pending: '+synced.reason);
+  }else{
+    status('Local check-in only');
+    toast('Saved for today on this device. Profile sync key is unavailable, so this answer will not sync.');
+  }
   await drawPlayers();
 }
 function formatTime(value){const [h,m]=value.split(':').map(Number);return new Date(today()+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00').toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',timeZone:C.tz});}
@@ -600,7 +605,7 @@ async function refreshDailyDate(){
 window.addEventListener('focus',refreshDailyDate);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
 setInterval(refreshDailyDate,60000);
-function shouldAskDaily(){return!!profile&&client.onboarded&&!!client.deviceKey&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
+function shouldAskDaily(){return!!profile&&client.onboarded&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
 function openDailyQuestion(){if(!shouldAskDaily()){$('daily-modal').hidden=true;return}$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
 async function answerDaily(clean){await checkin(clean)}
 async function init(){
