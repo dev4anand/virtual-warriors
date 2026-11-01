@@ -422,6 +422,34 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 }
 @media(max-width:360px){.status-badge{font-size:8px!important}.activity-actions{gap:4px}.secondary-btn{padding:7px 8px}}
 
+
+/* Anti Goon Mode entry section */
+.anti-mode{
+  display:flex;align-items:center;justify-content:space-between;gap:22px;
+  margin:18px 0 0;padding:22px 23px;
+  border:1px solid #315b50;border-radius:18px;
+  background:radial-gradient(ellipse at 85% 10%,#3fb95018,transparent 48%),linear-gradient(140deg,#142820,#111d20);
+  box-shadow:0 14px 36px #0003;
+}
+.anti-mode-copy{min-width:0}
+.anti-mode-eyebrow{display:inline-block;color:#9ed9bd;font-size:9px;font-weight:850;letter-spacing:1.8px}
+.anti-mode h2{margin:8px 0 7px;color:#e8f4ed;font-size:21px;letter-spacing:-.5px}
+.anti-mode p{max-width:520px;margin:0;color:#a9c1b5;font-size:11px;line-height:1.75}
+.anti-mode-details{display:flex;flex-wrap:wrap;gap:13px;margin-top:13px;color:#85ab99;font-size:9px}
+.anti-mode-link{
+  display:inline-flex;align-items:center;justify-content:center;gap:12px;flex:none;
+  padding:12px 17px;border:1px solid #5b9a7e;border-radius:26px;
+  background:#b8ead4;color:#102b24!important;text-decoration:none;
+  font-size:10px;font-weight:850;white-space:nowrap;transition:.2s;
+}
+.anti-mode-link:hover{background:#d4f4e4;transform:translateY(-2px);box-shadow:0 8px 22px #69c49a22}
+.anti-mode-link span{font-size:14px}
+@media(max-width:580px){
+ .anti-mode{align-items:flex-start;flex-direction:column;padding:19px 16px;gap:15px}
+ .anti-mode h2{font-size:19px}
+ .anti-mode-link{width:100%;padding:13px}
+}
+
 </style></head><body>
 <header class="top">
   <div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#000000"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#39d353" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#58a6ff" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#f0c75e"/></svg><span>Goongle</span></div>
@@ -434,6 +462,16 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 
 <section class="stats"><article class="stat">🔥<span class="label">CURRENT STREAK</span><strong id="streak">0 <small>days</small></strong><p id="streak-note">Start with today.</p></article><article class="stat">✓<span class="label">DAYS YOU DIDN’T GOON</span><strong id="went">0</strong><p>Clean days across your history.</p></article><article class="stat">📅<span class="label">TOTAL CHECK-INS</span><strong id="progress">0</strong><p>Every answer counts.</p></article></section>
 <section class="panel checkin" id="checkin"><div class="checkin-head"><div><div class="kicker">DAILY GOON CHECK-IN</div><div id="today" class="muted" style="font-size:9px;margin-top:5px">TODAY</div></div><span class="badge">● YOUR DAY, YOUR CALL</span></div><div id="question"></div><div class="note">Your daily question appears automatically when you open Goongle and have not checked in today. You can submit one answer per day.</div><a class="calendar" id="calendar" href="#" hidden>＋ Add daily Google Calendar reminder</a></section>
+
+<section class="anti-mode" aria-labelledby="anti-mode-title">
+  <div class="anti-mode-copy">
+    <span class="anti-mode-eyebrow">NEED A RESET?</span>
+    <h2 id="anti-mode-title">Anti Goon Mode</h2>
+    <p>Step away from the noise. Slow down with peaceful ambient sounds and gentle breathing visuals. Give your mind a moment to rest.</p>
+    <div class="anti-mode-details"><span>♫ Original ambient sound</span><span>◌ Guided breathing</span></div>
+  </div>
+  <a class="anti-mode-link" href="./anti-goon-mode.html">Enter Anti Goon Mode <span aria-hidden="true">↗</span></a>
+</section>
 
 <footer class="footer"><span>Built for consistency, not perfection.</span><a href="https://github.com/dev4anand/virtual-warriors" target="_blank" rel="noopener">Open source on GitHub ↗</a></footer></main>
 <div class="modal" id="modal" hidden><div class="box onboarding-box"><button class="close" id="close" aria-label="Close">×</button>
