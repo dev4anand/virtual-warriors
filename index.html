@@ -520,7 +520,7 @@ function losingAnimation(){const faces=['💀','🥀','😵','🪦','😭'];for(
 function celebrateCompletion(){blast(true);const colors=['#3fb950','#8be9a1','#58a6ff','#d29922','#f778ba','#fff'];for(let i=0;i<70;i++){const e=document.createElement('i');e.className='confetti';e.style.left=Math.random()*100+'vw';e.style.background=colors[i%colors.length];e.style.width=(5+Math.random()*7)+'px';e.style.height=(8+Math.random()*12)+'px';e.style.setProperty('--x',(Math.random()*260-130)+'px');e.style.animationDuration=(1.5+Math.random()*1.5)+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),3300)}const icons=['🎉','🏆','✨','🎊'];for(let i=0;i<18;i++){const e=document.createElement('span');e.className='confetti';e.textContent=icons[i%icons.length];e.style.left=Math.random()*100+'vw';e.style.width='auto';e.style.height='auto';e.style.background='transparent';e.style.fontSize=(20+Math.random()*18)+'px';e.style.setProperty('--x',(Math.random()*200-100)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}}
 async function checkin(clean){
   const date=today();
-  if(!profile||!client.onboarded||client.player?.id!==profile.id||isAnsweredEntry(log[date])||$('daily-modal').hidden)return;
+  if(!profile||client.player?.id!==profile.id||isAnsweredEntry(log[date])||$('daily-modal').hidden)return;
   const entry={answered:true,updatedAt:new Date().toISOString()};
   if(clean)entry.clean=true;
   log[date]=entry;
@@ -605,12 +605,14 @@ async function refreshDailyDate(){
 window.addEventListener('focus',refreshDailyDate);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
 setInterval(refreshDailyDate,60000);
-function shouldAskDaily(){return!!profile&&client.onboarded&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
+function shouldAskDaily(){return!!profile&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
 function openDailyQuestion(){if(!shouldAskDaily()){$('daily-modal').hidden=true;return}$('daily-day').textContent='TODAY · '+new Date(today()+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});$('daily-modal').hidden=false;setTimeout(()=>$('daily-no').focus(),40)}
 async function answerDaily(clean){await checkin(clean)}
 async function init(){
   await checkWorker();
-  if(!client.onboarded||!client.player?.id){draw();showWizard(1);return}
+  if(!client.player?.id){draw();showWizard(1);return}
+  // An existing saved profile is enough to enter the tracker; calendar setup is optional.
+  client.onboarded=true;
   const playerId=client.player.id;
   try{
     const remote=await remotePlayer(playerId);
