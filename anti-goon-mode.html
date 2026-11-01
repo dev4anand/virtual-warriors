@@ -31,6 +31,47 @@ h1{font-size:clamp(42px,8vw,72px);line-height:1.02;letter-spacing:-.055em;font-w
 h1 span{color:var(--mint)}
 .intro{max-width:490px;margin:0 auto;color:#b4c9c0;font-size:14px;line-height:1.85}
 .scene{height:310px;display:grid;place-items:center;position:relative;margin:23px auto 10px}
+
+.visual-stack{position:relative;width:100%;height:100%}
+.visual-panel{position:absolute;inset:0;display:grid;place-items:center;opacity:0;visibility:hidden;transform:translate3d(0,16px,0) scale(.88);filter:blur(12px);transition:opacity 1.2s ease,transform 1.2s cubic-bezier(.2,.75,.25,1),filter 1.2s ease,visibility 0s linear 1.2s}
+.visual-panel.active{opacity:1;visibility:visible;transform:translate3d(0,0,0) scale(1);filter:blur(0);transition-delay:0s;animation:visual-pop 1.2s cubic-bezier(.18,.78,.24,1) both}
+@keyframes visual-pop{0%{opacity:0;transform:translate3d(0,20px,0) scale(.78);filter:blur(13px)}68%{opacity:1;transform:translate3d(0,-3px,0) scale(1.035);filter:blur(0)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+.visual-meta{min-height:22px;margin:-3px auto 4px;display:flex;justify-content:center;align-items:center;gap:10px;color:#8eafa1;font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+.visual-dots{display:flex;gap:5px;align-items:center}
+.visual-dots i{width:5px;height:5px;border-radius:50%;background:#52766a;transition:width .4s ease,background .4s ease,opacity .4s ease;opacity:.7}
+.visual-dots i.active{width:17px;border-radius:6px;background:#a8e6cf;opacity:1}
+.aurora-art{width:min(310px,78vw);height:250px;position:relative;overflow:hidden;border:1px solid #9acdb52b;border-radius:48% 48% 22px 22px;background:radial-gradient(ellipse at 52% 95%,#163d3b 0%,#0d292d 48%,#0a1b24 100%);box-shadow:0 24px 80px #020b0d88,inset 0 0 45px #6ac8a512}
+.aurora-art:before{content:"";position:absolute;right:16%;top:14%;width:42px;height:42px;border-radius:50%;background:#d9ebcf;box-shadow:0 0 22px #d8f0d699,0 0 58px #b8edd455;opacity:.85}
+.aurora-art:after{content:"";position:absolute;left:-8%;right:-8%;bottom:-22%;height:48%;border-radius:50% 50% 0 0;background:linear-gradient(180deg,#1e554b,#0a2328 75%);box-shadow:0 -12px 45px #69cba51c}
+.aurora-band{position:absolute;z-index:1;left:-35%;top:12%;width:165%;height:76%;border-radius:50%;filter:blur(13px);opacity:.52;transform:rotate(-19deg);background:linear-gradient(108deg,transparent 7%,#59c69a33 28%,#8de6b8aa 43%,#55b9a288 53%,#8bdfc833 67%,transparent 86%);animation:aurora-drift 10s ease-in-out infinite alternate}
+.aurora-band.two{top:25%;left:-22%;height:57%;opacity:.4;filter:blur(17px);transform:rotate(16deg);background:linear-gradient(100deg,transparent 10%,#5a9cba22 30%,#86d7c677 49%,#8caee255 58%,transparent 83%);animation-delay:-4s;animation-duration:13s}
+.aurora-band.three{top:4%;left:2%;height:62%;opacity:.25;filter:blur(20px);transform:rotate(-32deg);background:linear-gradient(100deg,transparent 12%,#b7edc877 45%,#73c9ad55 60%,transparent 88%);animation-delay:-7s;animation-duration:15s}
+@keyframes aurora-drift{from{translate:-5% -3%;scale:.94 1}to{translate:7% 5%;scale:1.08 .88}}
+.aurora-star{position:absolute;z-index:2;left:var(--x);top:var(--y);width:3px;height:3px;border-radius:50%;background:#e4f4df;box-shadow:0 0 9px #d6f5dc;opacity:.7;animation:twinkle 3.5s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.2;transform:scale(.7)}to{opacity:.95;transform:scale(1.35)}}
+.lotus-stage{width:260px;height:250px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 18px 35px #0007)}
+.lotus-halo{position:absolute;width:214px;height:214px;border:1px solid #8ed9bf3b;border-radius:50%;box-shadow:0 0 55px #7ddab51a,inset 0 0 45px #7ddab511;animation:halo-breathe 9s ease-in-out infinite}
+.lotus-halo:before,.lotus-halo:after{content:"";position:absolute;inset:17px;border:1px solid #9be5c51c;border-radius:50%}
+.lotus-halo:after{inset:37px}
+@keyframes halo-breathe{0%,100%{transform:scale(.94);opacity:.45}50%{transform:scale(1.06);opacity:.9}}
+.lotus-flower{position:absolute;width:190px;height:190px;left:50%;top:50%;transform:translate(-50%,-45%);animation:lotus-float 8s ease-in-out infinite}
+@keyframes lotus-float{0%,100%{translate:0 4px;rotate:-2deg}50%{translate:0 -7px;rotate:2deg}}
+.lotus-petal{position:absolute;left:50%;top:54%;width:48px;height:94px;transform-origin:50% 88%;transform:translate(-50%,-88%) rotate(var(--angle)) scale(.82);border:1px solid #c3f1d74d;border-radius:85% 15% 80% 20%;background:linear-gradient(155deg,#d5f4d8 0%,#83d5b8 35%,#448e81 78%,#285b5a 100%);box-shadow:inset 5px 4px 13px #ffffff40,0 0 16px #7ad9b52a;animation:petal-open 7s ease-in-out infinite alternate;animation-delay:var(--delay)}
+@keyframes petal-open{from{filter:brightness(.82);scale:.88}to{filter:brightness(1.12);scale:1.03}}
+.lotus-center{position:absolute;left:50%;top:54%;width:28px;height:28px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c9,#e5c98c 55%,#a77c4b);box-shadow:0 0 22px #efd69a88}
+.lotus-ripple{position:absolute;left:50%;bottom:9px;width:190px;height:25px;transform:translateX(-50%);border:1px solid #80cdb04a;border-radius:50%;box-shadow:0 0 20px #6bc4a622;animation:ripple 5s ease-out infinite}
+.lotus-ripple.two{width:145px;bottom:1px;animation-delay:2.5s}
+@keyframes ripple{0%{transform:translateX(-50%) scale(.72);opacity:.12}55%{opacity:.55}100%{transform:translateX(-50%) scale(1.18);opacity:0}}
+.moon-art{width:min(310px,78vw);height:250px;position:relative;overflow:hidden;border:1px solid #9ebad32b;border-radius:48% 48% 20px 20px;background:radial-gradient(ellipse at 50% 38%,#24465a 0%,#142c3c 45%,#0a1b27 100%);box-shadow:0 24px 80px #020b0d88,inset 0 0 45px #91c6e012}
+.moon-disc{position:absolute;z-index:2;left:calc(50% - 29px);top:32px;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#fff9df,#e8e4c4 62%,#b7c8bd);box-shadow:0 0 23px #e7edccaa,0 0 65px #d4e8d544}
+.moon-disc:after{content:"";position:absolute;left:17px;top:-7px;width:55px;height:55px;border-radius:50%;background:#1a3547;box-shadow:inset -3px 0 9px #a2b9b533}
+.moon-star{position:absolute;z-index:2;width:3px;height:3px;border-radius:50%;background:#e8f4e8;box-shadow:0 0 8px #e8f4e8;opacity:.65;animation:twinkle 4s ease-in-out infinite alternate}
+.moon-horizon{position:absolute;z-index:3;left:-10%;right:-10%;top:60%;height:2px;background:#b3d4d477;box-shadow:0 0 16px #b3d4d4}
+.moon-water{position:absolute;left:0;right:0;top:61%;bottom:0;background:linear-gradient(180deg,#244b5a77,#102b37 40%,#0a1b27);overflow:hidden}
+.moon-water:before{content:"";position:absolute;left:calc(50% - 42px);top:0;width:84px;height:100%;background:linear-gradient(180deg,#d5dfbf88,#8ec6b944 30%,transparent 92%);filter:blur(13px);opacity:.72;animation:moon-shimmer 5s ease-in-out infinite alternate}
+.moon-wave{position:absolute;left:var(--left);top:var(--top);width:var(--width);height:2px;border-radius:50%;background:#a4d4d088;box-shadow:0 0 8px #8ecfc055;animation:wave-glow 4s ease-in-out infinite alternate;animation-delay:var(--delay)}
+@keyframes moon-shimmer{from{opacity:.3;scale:.65 1}to{opacity:.8;scale:1.25 1}}
+@keyframes wave-glow{from{opacity:.18;transform:scaleX(.7)}to{opacity:.8;transform:scaleX(1.12)}}
 .orbit{width:252px;height:252px;border-radius:50%;position:relative;display:grid;place-items:center}
 .orbit:before,.orbit:after{content:"";position:absolute;inset:0;border-radius:50%;border:1px solid #9cdbc133;transform:scale(1);opacity:.45}
 .orbit:after{inset:18px;border-color:#d6e8d533}
@@ -61,7 +102,7 @@ h1 span{color:var(--mint)}
 .tip span{font-size:10px;color:#92ada2;line-height:1.65}
 footer{position:relative;z-index:1;text-align:center;padding:0 20px 25px;color:#688579;font-size:9px;letter-spacing:.08em}
 @media(max-width:600px){.topbar{padding:16px}.topbar .brand{font-size:11px}.back{font-size:10px;padding:8px 11px}main{padding:34px 17px 50px}.scene{height:270px;margin:15px auto 0}.orbit{width:222px;height:222px}.orb-core{width:145px;height:145px}.tips{grid-template-columns:1fr;gap:8px}.tip{padding:13px}.affirmation{font-size:15px;margin-top:32px}.controls{gap:10px}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}.glow{opacity:.1}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.glow{opacity:.1}}
 </style>
 </head>
 <body>
@@ -74,9 +115,46 @@ footer{position:relative;z-index:1;text-align:center;padding:0 20px 25px;color:#
   <div class="eyebrow">Anti Goon Mode · Take a moment for yourself</div>
   <h1>Pause. Breathe.<br><span>Begin again.</span></h1>
   <p class="intro">Step away from the noise. Let your shoulders relax, slow your breathing, and give your mind a quiet place to land. There is nothing you need to prove right now.</p>
-  <section class="scene" aria-label="Slow breathing visual">
-    <div class="orbit" id="orbit"><div class="orb-core"><span class="breath-word" id="breath-word">Ready?</span></div></div>
+  <section class="scene" aria-label="Four calming visuals that gently fade between scenes">
+    <div class="visual-stack" id="visual-stack">
+      <div class="visual-panel active" data-visual="0">
+        <div class="orbit" id="orbit"><div class="orb-core"><span class="breath-word" id="breath-word">Ready?</span></div></div>
+      </div>
+      <div class="visual-panel" data-visual="1" aria-hidden="true">
+        <div class="aurora-art" aria-hidden="true">
+          <span class="aurora-band"></span><span class="aurora-band two"></span><span class="aurora-band three"></span>
+          <i class="aurora-star" style="--x:16%;--y:22%"></i><i class="aurora-star" style="--x:32%;--y:14%"></i><i class="aurora-star" style="--x:63%;--y:19%"></i><i class="aurora-star" style="--x:79%;--y:32%"></i><i class="aurora-star" style="--x:23%;--y:45%"></i><i class="aurora-star" style="--x:72%;--y:49%"></i>
+        </div>
+      </div>
+      <div class="visual-panel" data-visual="2" aria-hidden="true">
+        <div class="lotus-stage" aria-hidden="true">
+          <div class="lotus-halo"></div>
+          <div class="lotus-flower">
+            <span class="lotus-petal" style="--angle:0deg;--delay:0s"></span>
+            <span class="lotus-petal" style="--angle:45deg;--delay:-.5s"></span>
+            <span class="lotus-petal" style="--angle:90deg;--delay:-1s"></span>
+            <span class="lotus-petal" style="--angle:135deg;--delay:-1.5s"></span>
+            <span class="lotus-petal" style="--angle:180deg;--delay:-2s"></span>
+            <span class="lotus-petal" style="--angle:225deg;--delay:-2.5s"></span>
+            <span class="lotus-petal" style="--angle:270deg;--delay:-3s"></span>
+            <span class="lotus-petal" style="--angle:315deg;--delay:-3.5s"></span>
+            <span class="lotus-center"></span>
+          </div>
+          <span class="lotus-ripple"></span><span class="lotus-ripple two"></span>
+        </div>
+      </div>
+      <div class="visual-panel" data-visual="3" aria-hidden="true">
+        <div class="moon-art" aria-hidden="true">
+          <span class="moon-disc"></span>
+          <i class="moon-star" style="left:18%;top:21%"></i><i class="moon-star" style="left:32%;top:35%"></i><i class="moon-star" style="left:75%;top:18%"></i><i class="moon-star" style="left:84%;top:41%"></i><i class="moon-star" style="left:61%;top:12%"></i>
+          <span class="moon-horizon"></span><div class="moon-water">
+            <i class="moon-wave" style="--left:34%;--top:12%;--width:32%;--delay:0s"></i><i class="moon-wave" style="--left:38%;--top:28%;--width:25%;--delay:-1s"></i><i class="moon-wave" style="--left:24%;--top:44%;--width:52%;--delay:-2s"></i><i class="moon-wave" style="--left:31%;--top:62%;--width:40%;--delay:-.5s"></i><i class="moon-wave" style="--left:15%;--top:78%;--width:70%;--delay:-1.5s"></i>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
+  <div class="visual-meta"><span id="visual-label">Breathing orb · 1 / 4</span><span class="visual-dots" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i></span></div>
   <div class="phase" id="phase" aria-live="polite">A quiet moment starts with one breath</div>
   <div class="support" id="support">Breathe in gently for 4 seconds · breathe out slowly for 6 seconds</div>
   <div class="controls">
@@ -97,8 +175,9 @@ footer{position:relative;z-index:1;text-align:center;padding:0 20px 25px;color:#
 'use strict';
 const $=id=>document.getElementById(id);
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let running=false,ctx=null,master=null,pad=[],chordTimer=null,chimeTimer=null,phaseTimer=null,phaseTimeout=null;
-let chordIndex=0,phaseStarted=0,raf=0;
+let running=false,ctx=null,master=null,pad=[],chordTimer=null,chimeTimer=null,phaseTimer=null,phaseTimeout=null,visualTimer=null;
+let chordIndex=0,phaseStarted=0,raf=0,activeVisual=0;
+const visualNames=['Breathing orb','Northern lights','Blooming lotus','Moonlit water'];
 const chords=[
   [48,52,55,59,62], // C major 9
   [45,48,52,55,59], // A minor 9
@@ -173,7 +252,28 @@ function updatePhase(){
   $('phase').textContent=inhale?'Inhale · 4 seconds':'Exhale · 6 seconds';
   $('support').textContent=inhale?'Let the air arrive gently. No need to force it.':'Release slowly. Let your body soften.';
 }
+function showVisual(index){
+  const panels=document.querySelectorAll('.visual-panel');
+  const dots=document.querySelectorAll('.visual-dots i');
+  activeVisual=((index%visualNames.length)+visualNames.length)%visualNames.length;
+  panels.forEach((panel,i)=>{
+    const active=i===activeVisual;
+    panel.classList.toggle('active',active);
+    panel.setAttribute('aria-hidden',String(!active));
+  });
+  dots.forEach((dot,i)=>dot.classList.toggle('active',i===activeVisual));
+  $('visual-label').textContent=visualNames[activeVisual]+' · '+(activeVisual+1)+' / '+visualNames.length;
+}
+function startVisualRotation(){
+  if(reducedMotion||visualTimer)return;
+  visualTimer=setInterval(()=>showVisual(activeVisual+1),11500);
+}
+function stopVisualRotation(){
+  if(visualTimer){clearInterval(visualTimer);visualTimer=null}
+}
 function startVisuals(){
+  showVisual(activeVisual);
+  startVisualRotation();
   $('orbit').classList.add('breathing');
   phaseStarted=Date.now();
   updatePhase();
@@ -181,6 +281,7 @@ function startVisuals(){
   phaseTimer=setInterval(updatePhase,250);
 }
 function pauseVisuals(){
+  stopVisualRotation();
   $('orbit').classList.remove('breathing');
   $('breath-word').textContent='Rest';
   $('phase').textContent='Take your time';
@@ -210,6 +311,7 @@ function pause(){
 function endSession(){
   running=false;
   pauseVisuals();stopSound();
+  showVisual(0);
   $('stop').hidden=true;
   $('volume-wrap').hidden=true;
   $('play').textContent='▶  Start peaceful session';
