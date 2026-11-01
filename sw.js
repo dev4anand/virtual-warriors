@@ -1,4 +1,4 @@
-const CACHE = "go-tracker-shell-v17";
+const CACHE = "go-tracker-shell-v18";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./favicon.svg"];
 
 self.addEventListener("install", event => {
