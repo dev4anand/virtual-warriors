@@ -1,5 +1,5 @@
-const CACHE = "go-tracker-shell-v19";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./favicon.svg"];
+const CACHE = "go-tracker-shell-v20";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./favicon.svg", "./anti-goon-mode.html"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
