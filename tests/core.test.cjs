@@ -119,6 +119,46 @@ vm.runInNewContext(html.slice(loadStart, loadEnd) + '\nglobalThis.loaded = loadC
 assert.equal(wrongOwnerContext.loaded.today, null,
   'one player’s today answer must never be loaded for another player');
 
+const storeStart = html.indexOf('const store=()=>');
+const storeEnd = html.indexOf('const isEliminated=()=>false;', storeStart);
+assert.ok(storeStart >= 0 && storeEnd > storeStart, 'account-scoped store function must be present');
+let savedSnapshot = null;
+const accountContext = {
+  profile: { id: 'player-a', name: 'Player A', usualTime: '18:00' },
+  client: {
+    player: { id: 'player-a', name: 'Player A', usualTime: '18:00' },
+    deviceKey: 'c'.repeat(64),
+    deviceKeysByPlayer: {},
+    historyByPlayer: {},
+    today: { date: current, answered: true, clean: true, updatedAt: current + 'T12:00:00.000Z' },
+    todayPlayerId: 'player-a'
+  },
+  log: {},
+  CLIENT_VERSION: 5,
+  today: browser.today,
+  validDateKey: browser.validDateKey,
+  isAnsweredEntry: browser.isAnsweredEntry,
+  merge: browser.merge,
+  normalizeLog: browser.normalizeLog,
+  localStorage: { setItem: (_key, value) => { savedSnapshot = JSON.parse(value); } },
+  status() {}
+};
+vm.runInNewContext(html.slice(storeStart, storeEnd) + '\nglobalThis.persist = store;', accountContext);
+accountContext.persist();
+assert.ok(accountContext.client.historyByPlayer['player-a'][current].clean,
+  'store must archive the current answer before the day field rolls over');
+
+accountContext.profile = { id: 'player-b', name: 'Player B', usualTime: '18:00' };
+accountContext.log = {};
+accountContext.persist();
+assert.equal(savedSnapshot.today, null, 'switching profiles must clear the previous profile’s daily answer');
+assert.ok(savedSnapshot.historyByPlayer['player-a'][current].clean,
+  'switching profiles must retain the previous player’s archived history');
+assert.deepEqual(Object.keys(savedSnapshot.historyByPlayer['player-b']), [],
+  'a new profile must not inherit the previous player’s history');
+assert.equal(savedSnapshot.deviceKeysByPlayer['player-a'], 'c'.repeat(64),
+  'switching profiles must preserve the previous player’s device key');
+
 const helperStart = worker.indexOf('function isValidDayKey(value)');
 const helperEnd = worker.indexOf('async function githubRequest', helperStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart, 'Worker date merge helpers must be present');
