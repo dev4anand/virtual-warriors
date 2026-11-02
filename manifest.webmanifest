@@ -4,6 +4,6 @@
   "description": "A simple daily habit tracker with clean contribution history and personal streaks.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f8fafd",
-  "theme_color": "#f8fafd"
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117"
 }
