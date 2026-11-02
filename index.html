@@ -502,9 +502,10 @@ const API='https://api.github.com/repos/'+C.owner+'/'+C.repo;
 const SYNC_API='https://go-tracker-sync.chknhntr123.workers.dev';
 const $=id=>document.getElementById(id);const read=(s,d)=>{try{return s?JSON.parse(s):d}catch{return d}};
 const CLIENT_KEY='gt.client',CLIENT_VERSION=5;
+let clientStorageAvailable=true;
 function loadClientState(){
   let saved=null;
-  try{saved=read(localStorage.getItem(CLIENT_KEY),null)}catch(error){console.warn('Goongle could not read local storage:',error)}
+  try{saved=read(localStorage.getItem(CLIENT_KEY),null)}catch(error){clientStorageAvailable=false;console.warn('Goongle could not read local storage:',error)}
   if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,deviceKeysByPlayer:{},onboarded:false,pledgeAccepted:false,today:null,todayPlayerId:null,history:{},historyPlayerId:null,historyByPlayer:{}};
   const player=saved.player&&typeof saved.player.id==='string'?saved.player:null;
   const historyBelongsToPlayer=!!player&&saved.historyPlayerId===player.id;
@@ -561,14 +562,14 @@ const store=()=>{
   const deviceIds=Object.keys(deviceKeysByPlayer);
   while(deviceIds.length>12)delete deviceKeysByPlayer[deviceIds.shift()];
   const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,deviceKeysByPlayer,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,todayPlayerId:client.today?profile?.id||null:null,history,historyPlayerId:profile?.id||null,historyByPlayer};
-  try{localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot))}
-  catch(error){console.warn('Goongle could not persist local history:',error);status('Storage unavailable')}
+  try{localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot));clientStorageAvailable=true}
+  catch(error){clientStorageAvailable=false;console.warn('Goongle could not persist local history:',error);status('Storage unavailable')}
   client=snapshot;
 };
 const isEliminated=()=>false;
 const isCompleted=()=>false;
 function toast(s){let t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),3000)}
-function status(s){const el=$('sync');el.textContent=s;el.classList.remove('connected','warning','local');el.classList.add(/synced|loaded|connected/i.test(s)?'connected':/error|not ready|local only|offline/i.test(s)?'warning':'local')}
+function status(s){const el=$('sync');el.textContent=s;el.classList.remove('connected','warning','local');el.classList.add(/synced|loaded|connected/i.test(s)?'connected':/error|not ready|local only|offline|storage unavailable/i.test(s)?'warning':'local')}
 let wizardStep=1;
 function setWizardStep(step){wizardStep=step;['welcome','pledge','profile','calendar'].forEach((name,i)=>$(name+'-step').hidden=(i+1)!==step);$('wizard-kicker').textContent=['WELCOME · STEP 1 OF 4','THE PLEDGE · STEP 2 OF 4','YOUR PROFILE · STEP 3 OF 4','CALENDAR · STEP 4 OF 4'][step-1];$('wizard-progress').style.width=(step*25)+'%';}
 function showWizard(step=1){foundPlayer=null;$('name').value=profile?.name||'';$('time').value=profile?.usualTime||'';$('lookup').textContent='Your name becomes your player identity.';$('pledge-ack').checked=client.pledgeAccepted===true;$('pledge-next').disabled=!$('pledge-ack').checked;setWizardStep(step);$('modal').hidden=false;}
@@ -646,7 +647,12 @@ async function checkin(clean){
   else{toast(wasEditing?dayLabel+' status saved. Only clean days appear green.':'Check-in saved. Your activity graph only highlights clean days.')}
   if(client.deviceKey){
     const synced=await syncCurrentPlayer();
-    if(!synced.ok)toast(dayLabel+' answer is saved on this device. GitHub sync pending: '+synced.reason);
+    if(!synced.ok)toast(clientStorageAvailable
+      ?dayLabel+' answer is saved on this device. GitHub sync pending: '+synced.reason
+      :'Browser storage is unavailable. Keep this tab open while GitHub sync is pending: '+synced.reason);
+  }else if(!clientStorageAvailable){
+    status('Storage unavailable');
+    toast('Browser storage is blocked. This answer exists only in this open tab and may be lost when it closes.');
   }else{
     status('Local only');
     toast(dayLabel+' answer is saved on this device. It will sync when this browser is linked to the player profile.');
@@ -666,9 +672,17 @@ $('form').onsubmit=async e=>{
   e.preventDefault();
   const n=$('name').value.trim(),id=slug(n),t=$('time').value;
   if(!n||!id||!t){toast('Please enter your username and usual reminder time.');return}
-  let existing=foundPlayer&&foundPlayer.id===id?foundPlayer:null;
-  if(!existing){try{existing=await remotePlayer(id)}catch(err){console.warn('Could not look up the public player record',err)}}
   const sameProfile=profile?.id===id;
+  let existing=sameProfile?{...profile,days:log}:(foundPlayer&&foundPlayer.id===id?foundPlayer:null);
+  if(!existing){
+    try{existing=await remotePlayer(id)}
+    catch(err){
+      console.warn('Could not verify the requested player profile:',err);
+      $('lookup').textContent='Could not verify this username. Check your connection and try again.';
+      toast('Username verification failed. No profile was created, to avoid duplicating an existing player.');
+      return;
+    }
+  }
   if(profile&&!sameProfile)store();
   const savedDeviceKey=client.deviceKeysByPlayer?.[id]||(sameProfile?client.deviceKey:null);
   const todayOwner=client.todayPlayerId||client.player?.id||null;
