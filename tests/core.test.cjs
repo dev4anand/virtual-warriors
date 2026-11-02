@@ -142,6 +142,7 @@ const accountContext = {
   log: {},
   clientStorageAvailable: true,
   CLIENT_VERSION: 5,
+  CLIENT_KEY: 'gt.client',
   today: browser.today,
   validDateKey: browser.validDateKey,
   isAnsweredEntry: browser.isAnsweredEntry,
