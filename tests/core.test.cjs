@@ -124,7 +124,10 @@ assert.equal(wrongOwnerContext.loaded.today, null,
 const storeStart = html.indexOf('const store=()=>');
 const storeEnd = html.indexOf('const isEliminated=()=>false;', storeStart);
 assert.ok(storeStart >= 0 && storeEnd > storeStart, 'account-scoped store function must be present');
-let savedSnapshot = null;
+const localStore = {
+  value: null,
+  setItem(_key, value) { this.value = JSON.parse(value); }
+};
 const accountContext = {
   profile: { id: 'player-a', name: 'Player A', usualTime: '18:00' },
   client: {
@@ -137,23 +140,25 @@ const accountContext = {
     todayPlayerId: 'player-a'
   },
   log: {},
+  clientStorageAvailable: true,
   CLIENT_VERSION: 5,
   today: browser.today,
   validDateKey: browser.validDateKey,
   isAnsweredEntry: browser.isAnsweredEntry,
   merge: browser.merge,
   normalizeLog: browser.normalizeLog,
-  localStorage: { setItem: (_key, value) => { savedSnapshot = JSON.parse(value); } },
+  localStorage: localStore,
   status() {}
 };
 vm.runInNewContext(html.slice(storeStart, storeEnd) + '\nglobalThis.persist = store;', accountContext);
 accountContext.persist();
-assert.ok(accountContext.client.historyByPlayer['player-a'][current].clean,
+assert.ok(accountContext.localStorage.value.historyByPlayer['player-a'][current].clean,
   'store must archive the current answer before the day field rolls over');
 
 accountContext.profile = { id: 'player-b', name: 'Player B', usualTime: '18:00' };
 accountContext.log = {};
 accountContext.persist();
+const savedSnapshot = accountContext.localStorage.value;
 assert.equal(savedSnapshot.today, null, 'switching profiles must clear the previous profile’s daily answer');
 assert.ok(savedSnapshot.historyByPlayer['player-a'][current].clean,
   'switching profiles must retain the previous player’s archived history');
