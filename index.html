@@ -545,7 +545,7 @@ const store=()=>{
   if(client.today?.date!==today()){client.today=null;client.todayPlayerId=null}
   if(!profile)client.deviceKey=null;
   client.version=CLIENT_VERSION;
-  client.player=profile?{id:profile.id,name:profile.name,usualTime:profile.usualTime}:null;
+  client.player=profile?{id:profile.id,name:profile.name,usualTime:profile.usualTime,createdAt:profile.createdAt||null}:null;
   const history=normalizeLog(log);
   const historyByPlayer={...(client.historyByPlayer||{})};
   const deviceKeysByPlayer={...(client.deviceKeysByPlayer||{})};
@@ -595,7 +595,7 @@ async function syncCurrentPlayer(){
     status('GitHub synced');return {ok:true};
   }catch(error){console.error(error);status('Local only');return {ok:false,reason:error.message}}
 }
-async function lookupPlayerByName(){const n=$('name').value.trim(),id=slug(n);foundPlayer=null;if(!id){$('lookup').textContent='Enter your name to look for an existing player.';return} $('lookup').textContent='Checking for an existing player…';try{const p=await remotePlayer(id);if($('name').value.trim()!==n)return;if(p){foundPlayer=p;$('time').value=p.usualTime||$('time').value;const total=answeredDays(p.days||{});$('lookup').textContent='Existing player: '+p.name+' · '+total+' check-ins · '+streakOf(p.days||{})+' day streak · usual time '+(p.usualTime||'not set')+'.';}else{$('lookup').textContent='New player. Choose your usual go time to create a profile.'}}catch(e){$('lookup').textContent='Could not check GitHub right now. You can still continue with a local profile.'}}
+async function lookupPlayerByName(){const n=$('name').value.trim(),id=slug(n);foundPlayer=null;if(!id){$('lookup').textContent='Enter your name to look for an existing player.';return} $('lookup').textContent='Checking for an existing player…';try{const p=await remotePlayer(id);if($('name').value.trim()!==n)return;if(p){foundPlayer=p;$('time').value=p.usualTime||$('time').value;const total=answeredDays(p.days||{});$('lookup').textContent='Existing player: '+p.name+' · '+total+' check-ins · '+streakOf(p.days||{})+' day streak · usual time '+(p.usualTime||'not set')+'.';}else{$('lookup').textContent='New player. Choose your usual go time to create a profile.'}}catch(e){$('lookup').textContent='Could not verify this username. Check your connection and try again.'}}
 function timestampOf(entry){const time=Date.parse(entry?.updatedAt||'');return Number.isFinite(time)?time:0}
 function merge(a,b){const m={...(b||{})};Object.keys(a||{}).forEach(k=>{if(!m[k]||timestampOf(a[k])>=timestampOf(m[k]))m[k]=a[k]});return m}
 function isCleanEntry(entry){return!!entry&&(entry.clean===true||entry.went===false)}
@@ -779,7 +779,7 @@ async function init(){
   try{
     const remote=await remotePlayer(playerId);
     if(!remote){
-      profile={...client.player,status:'active',createdAt:new Date().toISOString()};log=normalizeLog(log);
+      profile={...client.player,status:'active',createdAt:client.player.createdAt||new Date().toISOString()};log=normalizeLog(log);
       if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
       store();
       if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
