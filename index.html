@@ -506,7 +506,7 @@ let clientStorageAvailable=true;
 function loadClientState(){
   let saved=null;
   try{saved=read(localStorage.getItem(CLIENT_KEY),null)}catch(error){clientStorageAvailable=false;console.warn('Goongle could not read local storage:',error)}
-  if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,deviceKeysByPlayer:{},onboarded:false,pledgeAccepted:false,today:null,todayPlayerId:null,history:{},historyPlayerId:null,historyByPlayer:{}};
+  if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,deviceKeyPlayerId:null,deviceKeysByPlayer:{},onboarded:false,pledgeAccepted:false,today:null,todayPlayerId:null,history:{},historyPlayerId:null,historyByPlayer:{}};
   const player=saved.player&&typeof saved.player.id==='string'?saved.player:null;
   const historyBelongsToPlayer=!!player&&saved.historyPlayerId===player.id;
   const keys=saved.deviceKeysByPlayer&&typeof saved.deviceKeysByPlayer==='object'&&!Array.isArray(saved.deviceKeysByPlayer)?{...saved.deviceKeysByPlayer}:{};
@@ -521,6 +521,7 @@ function loadClientState(){
     player,
     deviceKeysByPlayer,
     deviceKey:player?deviceKeysByPlayer[player.id]||null:null,
+    deviceKeyPlayerId:player&&deviceKeysByPlayer[player.id]?player.id:null,
     onboarded:saved.onboarded===true,
     pledgeAccepted:saved.pledgeAccepted===true,
     today:todayBelongsToPlayer?saved.today:null,
@@ -543,25 +544,30 @@ const store=()=>{
   }
   if(client.today&&todayOwner!==profile?.id){client.today=null;client.todayPlayerId=null}
   if(client.today?.date!==today()){client.today=null;client.todayPlayerId=null}
-  if(!profile)client.deviceKey=null;
+  if(!profile){client.deviceKey=null;client.deviceKeyPlayerId=null}
   client.version=CLIENT_VERSION;
   client.player=profile?{id:profile.id,name:profile.name,usualTime:profile.usualTime,createdAt:profile.createdAt||null}:null;
   const history=normalizeLog(log);
   const historyByPlayer={...(client.historyByPlayer||{})};
   const deviceKeysByPlayer={...(client.deviceKeysByPlayer||{})};
+  if(profile&&client.deviceKeyPlayerId!==profile.id){
+    client.deviceKey=deviceKeysByPlayer[profile.id]||null;
+    client.deviceKeyPlayerId=client.deviceKey?profile.id:null;
+  }
   if(profile){
     delete historyByPlayer[profile.id];
     historyByPlayer[profile.id]=history;
     if(typeof client.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(client.deviceKey)){
       delete deviceKeysByPlayer[profile.id];
       deviceKeysByPlayer[profile.id]=client.deviceKey;
+      client.deviceKeyPlayerId=profile.id;
     }
   }
   const historyIds=Object.keys(historyByPlayer);
   while(historyIds.length>12)delete historyByPlayer[historyIds.shift()];
   const deviceIds=Object.keys(deviceKeysByPlayer);
   while(deviceIds.length>12)delete deviceKeysByPlayer[deviceIds.shift()];
-  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,deviceKeysByPlayer,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,todayPlayerId:client.today?profile?.id||null:null,history,historyPlayerId:profile?.id||null,historyByPlayer};
+  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,deviceKeyPlayerId:client.deviceKey?profile?.id||null:null,deviceKeysByPlayer,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,todayPlayerId:client.today?profile?.id||null:null,history,historyPlayerId:profile?.id||null,historyByPlayer};
   try{localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot));clientStorageAvailable=true}
   catch(error){clientStorageAvailable=false;console.warn('Goongle could not persist local history:',error);status('Storage unavailable')}
   client=snapshot;
@@ -586,7 +592,7 @@ async function syncCurrentPlayer(){
   if(!SYNC_API||!profile)return {ok:false,reason:'not-configured'};
   store();
   const secret=client.deviceKey;
-  if(!secret||client.player?.id!==profile.id){status('Local only');return {ok:false,reason:'no-player-key'}}
+  if(!secret||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id){status('Local only');return {ok:false,reason:'no-player-key'}}
   const record={schemaVersion:2,id:profile.id,name:profile.name,usualTime:profile.usualTime,days:log,status:'active',createdAt:profile.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   try{
     const response=await fetch(SYNC_API.replace(/\/$/,'')+'/players/'+encodeURIComponent(profile.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret,record})});
@@ -693,12 +699,14 @@ $('form').onsubmit=async e=>{
     if(savedDeviceKey&&client.todayPlayerId===id&&client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     profile={...existing,id,name:existing.name||n,usualTime:t,createdAt:existing.createdAt||new Date().toISOString(),status:'active'};
     client.deviceKey=savedDeviceKey||null;
+    client.deviceKeyPlayerId=savedDeviceKey?id:null;
     toast(savedDeviceKey?'Welcome back, '+profile.name+'. Your activity was restored.':'Profile found, but this browser is not linked. New check-ins will stay on this device.');
   }else{
     const localHistory=sameProfile?log:(client.historyByPlayer?.[id]||{});
     log=normalizeLog(localHistory);
     profile={id,name:n,usualTime:t,createdAt:new Date().toISOString(),status:'active'};
     client.deviceKey=savedDeviceKey||createPlayerSecret();
+    client.deviceKeyPlayerId=id;
     toast('New player profile created.');
   }
   store();
