@@ -11,7 +11,7 @@ When a registered player opens Goongle, the modal **“Did you goon today?”** 
 - Only clean days are highlighted in the contribution graph. There is no red activity series.
 - A day without a clean check-in breaks the current streak. A later clean day starts a new streak; players are never eliminated.
 
-The browser saves each answer immediately in localStorage, then synchronizes the record through the Cloudflare Worker to GitHub.
+The browser saves each answer immediately in localStorage, archives the full daily history per player, then synchronizes it through the Cloudflare Worker to GitHub. Pending local history is merged with the public record on return and retried when connectivity is restored. Device keys are preserved across app upgrades and kept separately for each player profile on the same browser.
 
 ## Activity history
 
@@ -46,6 +46,10 @@ Each player has a random device-specific key stored in that browser's localStora
 2. Enter a username and preferred daily reminder time.
 3. The app restores an existing public player record when one is available.
 4. Optionally add a recurring Google Calendar reminder.
+
+## Regression tests
+
+Run `node tests/core.test.cjs` to check date/streak calculations, state migration, profile isolation, invalid/future day handling, and conflict-safe GitHub saves. The Pages workflow runs these checks before publishing.
 
 ## Deployment
 
