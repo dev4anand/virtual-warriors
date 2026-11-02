@@ -503,7 +503,8 @@ const SYNC_API='https://go-tracker-sync.chknhntr123.workers.dev';
 const $=id=>document.getElementById(id);const read=(s,d)=>{try{return s?JSON.parse(s):d}catch{return d}};
 const CLIENT_KEY='gt.client',CLIENT_VERSION=5;
 function loadClientState(){
-  const saved=read(localStorage.getItem(CLIENT_KEY),null);
+  let saved=null;
+  try{saved=read(localStorage.getItem(CLIENT_KEY),null)}catch(error){console.warn('Goongle could not read local storage:',error)}
   if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,deviceKeysByPlayer:{},onboarded:false,pledgeAccepted:false,today:null,todayPlayerId:null,history:{},historyPlayerId:null,historyByPlayer:{}};
   const player=saved.player&&typeof saved.player.id==='string'?saved.player:null;
   const historyBelongsToPlayer=!!player&&saved.historyPlayerId===player.id;
@@ -528,7 +529,7 @@ function loadClientState(){
     historyByPlayer
   };
 }
-let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log=normalizeLog(client.historyByPlayer?.[client.player?.id]||client.history||{}),foundPlayer=null,workerReady=false;
+let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false;
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day};
 const dateKey=date=>date.toISOString().slice(0,10);const addDays=(key,n)=>{const d=new Date(key+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return dateKey(d)};const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24);
@@ -548,13 +549,20 @@ const store=()=>{
   const historyByPlayer={...(client.historyByPlayer||{})};
   const deviceKeysByPlayer={...(client.deviceKeysByPlayer||{})};
   if(profile){
+    delete historyByPlayer[profile.id];
     historyByPlayer[profile.id]=history;
-    if(typeof client.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(client.deviceKey))deviceKeysByPlayer[profile.id]=client.deviceKey;
+    if(typeof client.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(client.deviceKey)){
+      delete deviceKeysByPlayer[profile.id];
+      deviceKeysByPlayer[profile.id]=client.deviceKey;
+    }
   }
   const historyIds=Object.keys(historyByPlayer);
   while(historyIds.length>12)delete historyByPlayer[historyIds.shift()];
+  const deviceIds=Object.keys(deviceKeysByPlayer);
+  while(deviceIds.length>12)delete deviceKeysByPlayer[deviceIds.shift()];
   const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,deviceKeysByPlayer,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,todayPlayerId:client.today?profile?.id||null:null,history,historyPlayerId:profile?.id||null,historyByPlayer};
-  localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot));
+  try{localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot))}
+  catch(error){console.warn('Goongle could not persist local history:',error);status('Storage unavailable')}
   client=snapshot;
 };
 const isEliminated=()=>false;
@@ -595,6 +603,8 @@ function streakKeys(data){let cursor=today();if(isAnsweredEntry(data[cursor])&&!
 function streakOf(data){return streakKeys(data).size}
 function validDateKey(date){if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const [year,month,day]=date.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));return check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day}
 function normalizeLog(data){const normalized={};if(!data||typeof data!=='object'||Array.isArray(data))return normalized;const current=today();for(const [date,entry] of Object.entries(data)){if(!validDateKey(date)||date>current||!isAnsweredEntry(entry))continue;const parsed=Date.parse(typeof entry.updatedAt==='string'?entry.updatedAt:'');const updatedAt=Number.isFinite(parsed)?new Date(parsed).toISOString():new Date(date+'T12:00:00Z').toISOString();const clean={answered:true,updatedAt};if(isCleanEntry(entry))clean.clean=true;normalized[date]=clean}return normalized}
+// Initialize after today() and the date helpers are ready; normalizeLog calls today().
+log=normalizeLog(client.historyByPlayer?.[client.player?.id]||client.history||{});
 function answeredDays(data){return Object.entries(data||{}).filter(([date,entry])=>validDateKey(date)&&date<=today()&&isAnsweredEntry(entry)).length}
 function cleanDays(data){return Object.entries(data||{}).filter(([date,entry])=>validDateKey(date)&&date<=today()&&isCleanEntry(entry)).length}
 function activityMarkup(data){const current=today(),year=current.slice(0,4),yearStart=year+'-01-01',startDate=new Date(yearStart+'T12:00:00Z'),endDate=new Date(current+'T12:00:00Z'),gridStart=new Date(startDate);gridStart.setUTCDate(gridStart.getUTCDate()-((gridStart.getUTCDay()+6)%7));const gridEnd=new Date(endDate);gridEnd.setUTCDate(gridEnd.getUTCDate()+((7-gridEnd.getUTCDay())%7));const monthLabels=[],cells=[],streak=streakKeys(data||{});for(let week=new Date(gridStart);week<=gridEnd;week.setUTCDate(week.getUTCDate()+7)){let monthLabel='';for(let d=0;d<7;d++){const date=new Date(week);date.setUTCDate(date.getUTCDate()+d);const key=dateKey(date);if(date.getUTCDate()===1)monthLabel=new Intl.DateTimeFormat('en-US',{month:'short',timeZone:'UTC'}).format(date);if(key<yearStart||key>current){cells.push('<i class="cell blank" aria-hidden="true"></i>');continue}const clean=isCleanEntry(data?.[key]);const classes=['cell',clean?'yes':'',streak.has(key)?'streak-day':'',key===current?'today':''].filter(Boolean).join(' ');const label=key+': '+(clean?'Did not goon':'No clean check-in');cells.push('<i class="'+classes+'" title="'+esc(label)+'" aria-label="'+esc(label)+'"></i>')}monthLabels.push('<span>'+monthLabel+'</span>')}return '<div class="activity-chart"><div class="activity-months">'+monthLabels.join('')+'</div><div class="activity-grid-row"><div class="activity-weekdays"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span></div><div class="activity-cells">'+cells.join('')+'</div></div></div>'}
