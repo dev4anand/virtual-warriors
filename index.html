@@ -711,6 +711,7 @@ $('form').onsubmit=async e=>{
   }
   store();
   if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)toast('Profile saved on this device. Sync pending: '+synced.reason)}
+  else status('Local only · profile not linked');
   $('calendar-step').querySelector('h2').textContent='Set your daily reminder';
   $('calendar-step').querySelector('p').textContent='Create a Google Calendar reminder that repeats every day at your usual time.';
   $('calendar-setup').hidden=false;$('finish-onboarding').textContent='Continue to Goongle →';
@@ -791,6 +792,7 @@ async function init(){
       if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
       store();
       if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
+      else status('Local only · profile not linked');
       draw();openDailyQuestion();return;
     }
     profile={...remote,id:remote.id||playerId,name:remote.name||client.player.name,usualTime:remote.usualTime||client.player.usualTime,status:'active'};
@@ -798,6 +800,7 @@ async function init(){
     if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     store();
     if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
+    else status('Local only · profile not linked');
   }catch(error){
     console.warn('Could not load remote Goongle profile:',error);
     profile={...client.player,status:'active'};log=normalizeLog(log);
