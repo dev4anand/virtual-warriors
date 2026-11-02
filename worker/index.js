@@ -49,33 +49,42 @@ function isValidDayKey(value) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-function normalizeDayEntry(entry) {
-  if (!entry || typeof entry !== "object") return null;
+function todayInKolkata() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return values.year + "-" + values.month + "-" + values.day;
+}
+
+function normalizeDayEntry(entry, date) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
   const clean = entry.clean === true || entry.went === false;
   const answered = entry.answered === true || clean || typeof entry.went === "boolean";
   if (!answered) return null;
-  const normalized = {
-    answered: true,
-    updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString()
-  };
+  const parsed = Date.parse(typeof entry.updatedAt === "string" ? entry.updatedAt : "");
+  const updatedAt = Number.isFinite(parsed)
+    ? new Date(parsed).toISOString()
+    : new Date(date + "T12:00:00.000Z").toISOString();
+  const normalized = { answered: true, updatedAt };
   if (clean) normalized.clean = true;
   return normalized;
 }
 
 function mergeDays(previous, incoming) {
   const result = {};
-  for (const [date, entry] of Object.entries(previous || {})) {
-    if (!isValidDayKey(date)) continue;
-    const normalized = normalizeDayEntry(entry);
-    if (normalized) result[date] = normalized;
-  }
-  for (const [date, entry] of Object.entries(incoming || {})) {
-    if (!isValidDayKey(date)) continue;
-    const normalized = normalizeDayEntry(entry);
-    if (!normalized) continue;
-    const old = result[date];
-    if (!old || Date.parse(normalized.updatedAt) >= Date.parse(old.updatedAt || 0)) {
-      result[date] = normalized;
+  const current = todayInKolkata();
+  const sources = [previous, incoming];
+  for (const source of sources) {
+    if (!source || typeof source !== "object" || Array.isArray(source)) continue;
+    for (const [date, entry] of Object.entries(source)) {
+      if (!isValidDayKey(date) || date > current) continue;
+      const normalized = normalizeDayEntry(entry, date);
+      if (!normalized) continue;
+      const old = result[date];
+      const nextTime = Date.parse(normalized.updatedAt);
+      const oldTime = old ? Date.parse(old.updatedAt) : -1;
+      if (!old || nextTime >= oldTime) result[date] = normalized;
     }
   }
   return result;
@@ -142,7 +151,7 @@ async function savePlayer(env, id, payload) {
     return { status: 400, body: { error: "Invalid player key." } };
   }
   const input = payload.record;
-  if (!input || input.id !== id || typeof input.name !== "string" || typeof input.usualTime !== "string") {
+  if (!input || input.id !== id || typeof input.name !== "string" || !input.name.trim() || typeof input.usualTime !== "string") {
     return { status: 400, body: { error: "Invalid player profile." } };
   }
   if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(input.usualTime)) {
@@ -151,67 +160,83 @@ async function savePlayer(env, id, payload) {
   if (input.status !== undefined && !["active", "out", "completed"].includes(input.status)) {
     return { status: 400, body: { error: "Invalid player status." } };
   }
+  if (input.days !== undefined && (!input.days || typeof input.days !== "object" || Array.isArray(input.days))) {
+    return { status: 400, body: { error: "Daily history must be an object." } };
+  }
+  if (input.days && Object.keys(input.days).length > 5000) {
+    return { status: 413, body: { error: "Daily history is too large." } };
+  }
 
   const path = `/contents/data/players/${id}.json?ref=${BRANCH}`;
-  const currentResponse = await githubRequest(env, path);
-  let current = null;
-  let sha = null;
+  const suppliedHash = await sha256(payload.secret);
+  const incomingDays = mergeDays({}, input.days || {});
 
-  if (currentResponse.status === 200) {
-    const file = await currentResponse.json();
-    current = JSON.parse(decodeBase64(file.content));
-    sha = file.sha;
-    if (!current.authHash) {
-      return { status: 409, body: { error: "This public profile has no private player key yet. It must be migrated by the repository owner before writes are enabled." } };
+  // Multiple tabs/devices can submit at once. Re-read and merge after a SHA
+  // conflict rather than dropping one of the successful check-ins.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const currentResponse = await githubRequest(env, path);
+    let current = null;
+    let sha = null;
+
+    if (currentResponse.status === 200) {
+      const file = await currentResponse.json();
+      current = JSON.parse(decodeBase64(file.content));
+      sha = file.sha;
+      if (!current.authHash) {
+        return { status: 409, body: { error: "This public profile has no private player key yet. It must be migrated by the repository owner before writes are enabled." } };
+      }
+      if (suppliedHash !== current.authHash) {
+        return { status: 403, body: { error: "This browser is not linked to that player profile." } };
+      }
+    } else if (currentResponse.status !== 404) {
+      const detail = await currentResponse.text();
+      return { status: currentResponse.status, body: { error: "Could not read the player JSON from GitHub.", detail } };
     }
-    const suppliedHash = await sha256(payload.secret);
-    if (suppliedHash !== current.authHash) {
-      return { status: 403, body: { error: "This browser is not linked to that player profile." } };
-    }
-  } else if (currentResponse.status !== 404) {
-    const detail = await currentResponse.text();
-    return { status: currentResponse.status, body: { error: "Could not read the player JSON from GitHub.", detail } };
-  }
 
-  const authHash = current?.authHash || await sha256(payload.secret);
-  const record = {
-    schemaVersion: 2,
-    id,
-    name: input.name.slice(0, 32),
-    usualTime: input.usualTime,
-    days: mergeDays(current?.days, input.days),
-    status: "active",
-    createdAt: current?.createdAt || input.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    authHash
-  };
-
-  const body = {
-    message: `Goongle: update ${id}`,
-    branch: BRANCH,
-    content: encodeBase64(JSON.stringify(record, null, 2))
-  };
-  if (sha) body.sha = sha;
-
-  const writeResponse = await githubRequest(env, `/contents/data/players/${id}.json`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!writeResponse.ok) {
-    const detail = await writeResponse.text();
-    return { status: writeResponse.status, body: { error: "GitHub could not save this player record.", detail } };
-  }
-
-  return {
-    status: 200,
-    body: {
-      ok: true,
+    const record = {
+      schemaVersion: 2,
       id,
-      name: record.name,
-      updatedAt: record.updatedAt
+      name: input.name.trim().slice(0, 32),
+      usualTime: input.usualTime,
+      days: mergeDays(current?.days, incomingDays),
+      status: "active",
+      createdAt: current?.createdAt || input.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      authHash: current?.authHash || suppliedHash
+    };
+
+    const body = {
+      message: `Goongle: update ${id}`,
+      branch: BRANCH,
+      content: encodeBase64(JSON.stringify(record, null, 2))
+    };
+    if (sha) body.sha = sha;
+
+    const writeResponse = await githubRequest(env, `/contents/data/players/${id}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (writeResponse.ok) {
+      return {
+        status: 200,
+        body: { ok: true, id, name: record.name, updatedAt: record.updatedAt }
+      };
     }
-  };
+
+    const detail = await writeResponse.text();
+    let message = detail;
+    try { message = JSON.parse(detail).message || detail; } catch {}
+    const conflict = writeResponse.status === 409 ||
+      (writeResponse.status === 422 && /already exists|sha|does not match|must match/i.test(message));
+    if (conflict && attempt < 2) continue;
+    return {
+      status: writeResponse.status,
+      body: { error: conflict ? "GitHub changed this player record during the save. Please retry." : "GitHub could not save this player record.", detail }
+    };
+  }
+
+  return { status: 409, body: { error: "The player record was updated concurrently. Please retry." } };
 }
 
 export default {
