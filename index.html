@@ -501,24 +501,40 @@ const C={owner:'dev4anand',repo:'virtual-warriors',branch:'main',tz:'Asia/Kolkat
 const API='https://api.github.com/repos/'+C.owner+'/'+C.repo;
 const SYNC_API='https://go-tracker-sync.chknhntr123.workers.dev';
 const $=id=>document.getElementById(id);const read=(s,d)=>{try{return s?JSON.parse(s):d}catch{return d}};
-const CLIENT_KEY='gt.client',CLIENT_VERSION=3;
+const CLIENT_KEY='gt.client',CLIENT_VERSION=4;
 function loadClientState(){
-  const saved=read(localStorage.getItem(CLIENT_KEY),null),compatible=!!saved&&saved.version===CLIENT_VERSION;
-  for(let i=localStorage.length-1;i>=0;i--){const key=localStorage.key(i);if(key&&key.startsWith('gt.')&&(!compatible||key!==CLIENT_KEY))localStorage.removeItem(key)}
-  for(let i=sessionStorage.length-1;i>=0;i--){const key=sessionStorage.key(i);if(key&&key.startsWith('gt.'))sessionStorage.removeItem(key)}
-  return compatible?{...saved}:{version:CLIENT_VERSION,player:null,deviceKey:null,onboarded:false,pledgeAccepted:false,today:null};
+  const saved=read(localStorage.getItem(CLIENT_KEY),null);
+  if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,onboarded:false,pledgeAccepted:false,today:null,history:{},historyPlayerId:null};
+  const player=saved.player&&typeof saved.player.id==='string'?saved.player:null;
+  const historyBelongsToPlayer=!!player&&saved.historyPlayerId===player.id;
+  return{
+    ...saved,
+    version:CLIENT_VERSION,
+    player,
+    deviceKey:typeof saved.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(saved.deviceKey)?saved.deviceKey:null,
+    onboarded:saved.onboarded===true,
+    pledgeAccepted:saved.pledgeAccepted===true,
+    today:saved.today&&typeof saved.today==='object'?saved.today:null,
+    history:historyBelongsToPlayer&&saved.history&&typeof saved.history==='object'&&!Array.isArray(saved.history)?saved.history:{},
+    historyPlayerId:historyBelongsToPlayer?player.id:null
+  };
 }
-let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false;
+let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log=normalizeLog(client.history||{}),foundPlayer=null,workerReady=false;
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day};
 const dateKey=date=>date.toISOString().slice(0,10);const addDays=(key,n)=>{const d=new Date(key+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return dateKey(d)};const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24);
 const store=()=>{
   if(profile)profile.status='active';
+  // Archive the current answer before the one-day field rolls over.
+  if(profile&&client.player?.id===profile.id&&client.today?.date&&validDateKey(client.today.date)&&isAnsweredEntry(client.today)){
+    log=merge(log,{[client.today.date]:client.today});
+  }
   if(client.today?.date!==today())client.today=null;
   if(!profile)client.deviceKey=null;
   client.version=CLIENT_VERSION;
   client.player=profile?{id:profile.id,name:profile.name,usualTime:profile.usualTime}:null;
-  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null};
+  const history=normalizeLog(log);
+  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,history,historyPlayerId:profile?.id||null};
   localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot));
   client=snapshot;
 };
@@ -540,8 +556,9 @@ async function remoteMine(){return profile?remotePlayer(profile.id):null}
 function createPlayerSecret(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
 async function syncCurrentPlayer(){
   if(!SYNC_API||!profile)return {ok:false,reason:'not-configured'};
+  store();
   const secret=client.deviceKey;
-  if(!secret||client.player?.id!==profile.id)return {ok:false,reason:'no-player-key'};
+  if(!secret||client.player?.id!==profile.id){status('Local only');return {ok:false,reason:'no-player-key'}}
   const record={schemaVersion:2,id:profile.id,name:profile.name,usualTime:profile.usualTime,days:log,status:'active',createdAt:profile.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   try{
     const response=await fetch(SYNC_API.replace(/\/$/,'')+'/players/'+encodeURIComponent(profile.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret,record})});
@@ -657,10 +674,11 @@ async function refreshDailyDate(){
   activeDailyDate=current;
   dailyDateRefreshRunning=true;
   try{
-    if(client.today?.date!==current){client.today=null;store()}
+    if(client.today?.date!==current)store();
     if(profile){
       const remote=await remoteMine();
       if(remote)log=merge(log,normalizeLog(remote.days||{}));
+      store();
     }
   }catch(error){console.warn('Could not refresh the daily check-in date:',error)}
   draw();
@@ -700,21 +718,21 @@ async function init(){
   try{
     const remote=await remotePlayer(playerId);
     if(!remote){
-      profile={...client.player,status:'active',createdAt:new Date().toISOString()};log={};
-      if(client.today?.date===today()&&isAnsweredEntry(client.today))log[today()]=client.today;
+      profile={...client.player,status:'active',createdAt:new Date().toISOString()};log=normalizeLog(log);
+      if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
       store();
       if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
       draw();openDailyQuestion();return;
     }
     profile={...remote,id:remote.id||playerId,name:remote.name||client.player.name,usualTime:remote.usualTime||client.player.usualTime,status:'active'};
-    log=normalizeLog(remote.days||{});
+    log=normalizeLog(merge(log,remote.days||{}));
     if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     store();
     if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
   }catch(error){
     console.warn('Could not load remote Goongle profile:',error);
-    profile={...client.player,status:'active'};log={};
-    if(client.today?.date===today()&&isAnsweredEntry(client.today))log[today()]=client.today;
+    profile={...client.player,status:'active'};log=normalizeLog(log);
+    if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     status('Offline · showing only this day');
   }
   draw();openDailyQuestion();
