@@ -25,9 +25,15 @@ const browser = {
   C: { tz: 'Asia/Kolkata' },
   client: { player: null, history: {}, historyByPlayer: {} },
   log: {},
-  today: () => new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(new Date())
+  today: () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const fields = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return fields.year + '-' + fields.month + '-' + fields.day;
+  },
+  dateKey: date => date.toISOString().slice(0, 10),
+  addDays: (key, amount) => shiftDay(key, amount)
 };
 vm.runInNewContext(html.slice(coreStart, coreEnd), browser);
 
