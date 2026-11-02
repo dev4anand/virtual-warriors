@@ -297,7 +297,9 @@ async function begin(){
   $('stop').textContent='×  End session';
   $('volume-wrap').hidden=false;
   startVisuals();
-  try{await startSound()}catch(error){console.warn('Could not start ambient audio:',error);$('support').textContent='Sound could not start. Check your browser audio permission; the breathing visual is active.'}
+  try{await startSound()}catch(error){console.warn('Could not start ambient audio:',error);if(running)$('support').textContent='Sound could not start. Check your browser audio permission; the breathing visual is active.'}
+  // A pause/end action may be pressed while AudioContext.resume() is pending.
+  if(!running)return;
   $('stop').textContent='Pause session';
 }
 function pause(){
