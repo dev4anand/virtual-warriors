@@ -103,6 +103,8 @@ const migrationContext = {
 vm.runInNewContext(html.slice(loadStart, loadEnd) + '\nglobalThis.loaded = loadClientState();', migrationContext);
 assert.equal(migrationContext.loaded.deviceKey, 'a'.repeat(64),
   'upgrading an existing profile must preserve its private device key');
+assert.equal(migrationContext.loaded.deviceKeyPlayerId, 'anand',
+  'migration must associate the preserved key with its original profile');
 assert.equal(migrationContext.loaded.today.date, previous,
   'migration must retain the last one-day answer for archival');
 assert.equal(migrationContext.loaded.todayPlayerId, 'anand',
@@ -128,6 +130,7 @@ const accountContext = {
   client: {
     player: { id: 'player-a', name: 'Player A', usualTime: '18:00' },
     deviceKey: 'c'.repeat(64),
+    deviceKeyPlayerId: 'player-a',
     deviceKeysByPlayer: {},
     historyByPlayer: {},
     today: { date: current, answered: true, clean: true, updatedAt: current + 'T12:00:00.000Z' },
@@ -158,6 +161,10 @@ assert.deepEqual(Object.keys(savedSnapshot.historyByPlayer['player-b']), [],
   'a new profile must not inherit the previous player’s history');
 assert.equal(savedSnapshot.deviceKeysByPlayer['player-a'], 'c'.repeat(64),
   'switching profiles must preserve the previous player’s device key');
+assert.equal(savedSnapshot.deviceKey, null,
+  'switching profiles must not reuse the previous player’s active key');
+assert.equal(savedSnapshot.deviceKeyPlayerId, null,
+  'the active key owner must be cleared when the new profile has no linked key');
 
 const helperStart = worker.indexOf('function isValidDayKey(value)');
 const helperEnd = worker.indexOf('async function githubRequest', helperStart);
