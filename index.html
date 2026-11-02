@@ -501,40 +501,59 @@ const C={owner:'dev4anand',repo:'virtual-warriors',branch:'main',tz:'Asia/Kolkat
 const API='https://api.github.com/repos/'+C.owner+'/'+C.repo;
 const SYNC_API='https://go-tracker-sync.chknhntr123.workers.dev';
 const $=id=>document.getElementById(id);const read=(s,d)=>{try{return s?JSON.parse(s):d}catch{return d}};
-const CLIENT_KEY='gt.client',CLIENT_VERSION=4;
+const CLIENT_KEY='gt.client',CLIENT_VERSION=5;
 function loadClientState(){
   const saved=read(localStorage.getItem(CLIENT_KEY),null);
-  if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,onboarded:false,pledgeAccepted:false,today:null,history:{},historyPlayerId:null};
+  if(!saved||typeof saved!=='object')return{version:CLIENT_VERSION,player:null,deviceKey:null,deviceKeysByPlayer:{},onboarded:false,pledgeAccepted:false,today:null,todayPlayerId:null,history:{},historyPlayerId:null,historyByPlayer:{}};
   const player=saved.player&&typeof saved.player.id==='string'?saved.player:null;
   const historyBelongsToPlayer=!!player&&saved.historyPlayerId===player.id;
+  const keys=saved.deviceKeysByPlayer&&typeof saved.deviceKeysByPlayer==='object'&&!Array.isArray(saved.deviceKeysByPlayer)?{...saved.deviceKeysByPlayer}:{};
+  if(player&&typeof saved.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(saved.deviceKey))keys[player.id]=saved.deviceKey;
+  const deviceKeysByPlayer=Object.fromEntries(Object.entries(keys).filter(([id,key])=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)&&typeof key==='string'&&/^[a-f0-9]{64}$/.test(key)));
+  const historyByPlayer=saved.historyByPlayer&&typeof saved.historyByPlayer==='object'&&!Array.isArray(saved.historyByPlayer)?saved.historyByPlayer:{};
+  const todayOwner=typeof saved.todayPlayerId==='string'?saved.todayPlayerId:(saved.today&&player?player.id:null);
+  const todayBelongsToPlayer=!!player&&todayOwner===player.id&&saved.today&&typeof saved.today==='object';
   return{
     ...saved,
     version:CLIENT_VERSION,
     player,
-    deviceKey:typeof saved.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(saved.deviceKey)?saved.deviceKey:null,
+    deviceKeysByPlayer,
+    deviceKey:player?deviceKeysByPlayer[player.id]||null:null,
     onboarded:saved.onboarded===true,
     pledgeAccepted:saved.pledgeAccepted===true,
-    today:saved.today&&typeof saved.today==='object'?saved.today:null,
+    today:todayBelongsToPlayer?saved.today:null,
+    todayPlayerId:todayBelongsToPlayer?player.id:null,
     history:historyBelongsToPlayer&&saved.history&&typeof saved.history==='object'&&!Array.isArray(saved.history)?saved.history:{},
-    historyPlayerId:historyBelongsToPlayer?player.id:null
+    historyPlayerId:historyBelongsToPlayer?player.id:null,
+    historyByPlayer
   };
 }
-let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log=normalizeLog(client.history||{}),foundPlayer=null,workerReady=false;
+let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log=normalizeLog(client.historyByPlayer?.[client.player?.id]||client.history||{}),foundPlayer=null,workerReady=false;
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day};
 const dateKey=date=>date.toISOString().slice(0,10);const addDays=(key,n)=>{const d=new Date(key+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return dateKey(d)};const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24);
 const store=()=>{
   if(profile)profile.status='active';
-  // Archive the current answer before the one-day field rolls over.
-  if(profile&&client.player?.id===profile.id&&client.today?.date&&validDateKey(client.today.date)&&isAnsweredEntry(client.today)){
+  const todayOwner=client.todayPlayerId||client.player?.id||null;
+  // Preserve a saved answer under the player who actually submitted it.
+  if(profile&&todayOwner===profile.id&&client.today?.date&&validDateKey(client.today.date)&&isAnsweredEntry(client.today)){
     log=merge(log,{[client.today.date]:client.today});
   }
-  if(client.today?.date!==today())client.today=null;
+  if(client.today&&todayOwner!==profile?.id){client.today=null;client.todayPlayerId=null}
+  if(client.today?.date!==today()){client.today=null;client.todayPlayerId=null}
   if(!profile)client.deviceKey=null;
   client.version=CLIENT_VERSION;
   client.player=profile?{id:profile.id,name:profile.name,usualTime:profile.usualTime}:null;
   const history=normalizeLog(log);
-  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,history,historyPlayerId:profile?.id||null};
+  const historyByPlayer={...(client.historyByPlayer||{})};
+  const deviceKeysByPlayer={...(client.deviceKeysByPlayer||{})};
+  if(profile){
+    historyByPlayer[profile.id]=history;
+    if(typeof client.deviceKey==='string'&&/^[a-f0-9]{64}$/.test(client.deviceKey))deviceKeysByPlayer[profile.id]=client.deviceKey;
+  }
+  const historyIds=Object.keys(historyByPlayer);
+  while(historyIds.length>12)delete historyByPlayer[historyIds.shift()];
+  const snapshot={version:CLIENT_VERSION,player:client.player,deviceKey:client.deviceKey||null,deviceKeysByPlayer,onboarded:client.onboarded===true,pledgeAccepted:client.pledgeAccepted===true,today:client.today||null,todayPlayerId:client.today?profile?.id||null:null,history,historyPlayerId:profile?.id||null,historyByPlayer};
   localStorage.setItem(CLIENT_KEY,JSON.stringify(snapshot));
   client=snapshot;
 };
@@ -568,15 +587,16 @@ async function syncCurrentPlayer(){
   }catch(error){console.error(error);status('Local only');return {ok:false,reason:error.message}}
 }
 async function lookupPlayerByName(){const n=$('name').value.trim(),id=slug(n);foundPlayer=null;if(!id){$('lookup').textContent='Enter your name to look for an existing player.';return} $('lookup').textContent='Checking for an existing player…';try{const p=await remotePlayer(id);if($('name').value.trim()!==n)return;if(p){foundPlayer=p;$('time').value=p.usualTime||$('time').value;const total=answeredDays(p.days||{});$('lookup').textContent='Existing player: '+p.name+' · '+total+' check-ins · '+streakOf(p.days||{})+' day streak · usual time '+(p.usualTime||'not set')+'.';}else{$('lookup').textContent='New player. Choose your usual go time to create a profile.'}}catch(e){$('lookup').textContent='Could not check GitHub right now. You can still continue with a local profile.'}}
-function merge(a,b){let m={...(b||{})};Object.keys(a||{}).forEach(k=>{if(!m[k]||new Date(a[k].updatedAt||0)>=new Date(m[k].updatedAt||0))m[k]=a[k]});return m}
+function timestampOf(entry){const time=Date.parse(entry?.updatedAt||'');return Number.isFinite(time)?time:0}
+function merge(a,b){const m={...(b||{})};Object.keys(a||{}).forEach(k=>{if(!m[k]||timestampOf(a[k])>=timestampOf(m[k]))m[k]=a[k]});return m}
 function isCleanEntry(entry){return!!entry&&(entry.clean===true||entry.went===false)}
 function isAnsweredEntry(entry){return!!entry&&(entry.answered===true||entry.clean===true||typeof entry.went==='boolean')}
 function streakKeys(data){let cursor=today();if(isAnsweredEntry(data[cursor])&&!isCleanEntry(data[cursor]))return new Set();if(!isCleanEntry(data[cursor]))cursor=addDays(cursor,-1);const keys=new Set();for(let n=0;n<3650;n++){if(!isCleanEntry(data[cursor]))break;keys.add(cursor);cursor=addDays(cursor,-1)}return keys}
 function streakOf(data){return streakKeys(data).size}
 function validDateKey(date){if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const [year,month,day]=date.split('-').map(Number),check=new Date(Date.UTC(year,month-1,day));return check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day}
-function normalizeLog(data){const normalized={};for(const [date,entry] of Object.entries(data||{})){if(!validDateKey(date)||!isAnsweredEntry(entry))continue;const clean={answered:true,updatedAt:typeof entry.updatedAt==='string'?entry.updatedAt:new Date().toISOString()};if(isCleanEntry(entry))clean.clean=true;normalized[date]=clean}return normalized}
-function answeredDays(data){return Object.values(data||{}).filter(isAnsweredEntry).length}
-function cleanDays(data){return Object.values(data||{}).filter(isCleanEntry).length}
+function normalizeLog(data){const normalized={};if(!data||typeof data!=='object'||Array.isArray(data))return normalized;const current=today();for(const [date,entry] of Object.entries(data)){if(!validDateKey(date)||date>current||!isAnsweredEntry(entry))continue;const parsed=Date.parse(typeof entry.updatedAt==='string'?entry.updatedAt:'');const updatedAt=Number.isFinite(parsed)?new Date(parsed).toISOString():new Date(date+'T12:00:00Z').toISOString();const clean={answered:true,updatedAt};if(isCleanEntry(entry))clean.clean=true;normalized[date]=clean}return normalized}
+function answeredDays(data){return Object.entries(data||{}).filter(([date,entry])=>validDateKey(date)&&date<=today()&&isAnsweredEntry(entry)).length}
+function cleanDays(data){return Object.entries(data||{}).filter(([date,entry])=>validDateKey(date)&&date<=today()&&isCleanEntry(entry)).length}
 function activityMarkup(data){const current=today(),year=current.slice(0,4),yearStart=year+'-01-01',startDate=new Date(yearStart+'T12:00:00Z'),endDate=new Date(current+'T12:00:00Z'),gridStart=new Date(startDate);gridStart.setUTCDate(gridStart.getUTCDate()-((gridStart.getUTCDay()+6)%7));const gridEnd=new Date(endDate);gridEnd.setUTCDate(gridEnd.getUTCDate()+((7-gridEnd.getUTCDay())%7));const monthLabels=[],cells=[],streak=streakKeys(data||{});for(let week=new Date(gridStart);week<=gridEnd;week.setUTCDate(week.getUTCDate()+7)){let monthLabel='';for(let d=0;d<7;d++){const date=new Date(week);date.setUTCDate(date.getUTCDate()+d);const key=dateKey(date);if(date.getUTCDate()===1)monthLabel=new Intl.DateTimeFormat('en-US',{month:'short',timeZone:'UTC'}).format(date);if(key<yearStart||key>current){cells.push('<i class="cell blank" aria-hidden="true"></i>');continue}const clean=isCleanEntry(data?.[key]);const classes=['cell',clean?'yes':'',streak.has(key)?'streak-day':'',key===current?'today':''].filter(Boolean).join(' ');const label=key+': '+(clean?'Did not goon':'No clean check-in');cells.push('<i class="'+classes+'" title="'+esc(label)+'" aria-label="'+esc(label)+'"></i>')}monthLabels.push('<span>'+monthLabel+'</span>')}return '<div class="activity-chart"><div class="activity-months">'+monthLabels.join('')+'</div><div class="activity-grid-row"><div class="activity-weekdays"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span></div><div class="activity-cells">'+cells.join('')+'</div></div></div>'}
 function scrollHeatToToday(root){if(!root)return;requestAnimationFrame(()=>{root.scrollLeft=root.scrollWidth})}
 function drawHeat(){$('heat').innerHTML=activityMarkup(log);scrollHeatToToday($('heat'))}
@@ -589,7 +609,8 @@ function drawQuestion(){
     html='<h2>Set up your player profile.</h2><p class="desc">Your daily question will be ready after registration.</p><button class="primary" id="setup" type="button">Create your profile →</button>';
   }else if(isAnsweredEntry(entry)){
     const yesterday=addDays(date,-1);
-    const recoveryButton=!isAnsweredEntry(log[yesterday])?'<button class="change update-today" id="record-yesterday" type="button">↶ &nbsp; Record yesterday’s check-in</button>':'';
+    const recoveryLabel=isAnsweredEntry(log[yesterday])?'Update yesterday’s status':'Record yesterday’s check-in';
+    const recoveryButton='<button class="change update-today" id="record-yesterday" type="button">↶ &nbsp; '+recoveryLabel+'</button>';
     html='<div class="result"><div class="emoji">'+(isCleanEntry(entry)?'🌱':'✓')+'</div><div><h2>'+(isCleanEntry(entry)?'You stayed on track today.':'Today’s check-in is complete.')+'</h2><p>'+(isCleanEntry(entry)?'Your current streak is '+streakOf(log)+' day(s).':'Your check-in is saved. Your activity graph only highlights clean days.')+'</p></div></div><button class="change update-today" id="update-today" type="button">↻ &nbsp; Update today’s status</button>'+recoveryButton;
   }else{
     html='<h2>Your daily check-in is ready.</h2><p class="desc">The question appears when you open Goongle. You can submit one honest answer today.</p>';
@@ -607,7 +628,7 @@ async function checkin(clean){
   const entry={answered:true,updatedAt:new Date().toISOString()};
   if(clean)entry.clean=true;
   log[date]=entry;
-  if(isToday)client.today={date,answered:true,...(clean?{clean:true}:{}),updatedAt:entry.updatedAt};
+  if(isToday){client.today={date,answered:true,...(clean?{clean:true}:{}),updatedAt:entry.updatedAt};client.todayPlayerId=profile.id}
   editingDate=null;
   store();$('daily-modal').hidden=true;draw();
   const dayLabel=isToday?'Today':new Date(date+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'short'});
@@ -622,7 +643,7 @@ async function checkin(clean){
   }
   await drawPlayers();
 }
-function formatTime(value){const [h,m]=value.split(':').map(Number);return new Date(today()+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00').toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',timeZone:C.tz});}
+function formatTime(value){const [h,m]=value.split(':').map(Number),hour=h%12||12;return hour+':'+String(m).padStart(2,'0')+' '+(h>=12?'PM':'AM')}
 function calendarLink(){const [hour,minute]=profile.usualTime.split(':'),pad=n=>String(n).padStart(2,'0'),startDate=new Date(today()+'T'+hour+':'+minute+':00+05:30'),endDate=new Date(startDate.getTime()+15*60000),parts=date=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+p.month+p.day+'T'+p.hour+p.minute+'00'},start=parts(startDate),end=parts(endDate),details='Daily Goongle check-in. Did you goon today?\n\nOpen your tracker: '+C.url,params=new URLSearchParams({action:'TEMPLATE',text:'Did you goon today? · Goongle',dates:start+'/'+end,ctz:C.tz,details:details,recur:'RRULE:FREQ=DAILY'}),webUrl='https://calendar.google.com/calendar/render?'+params.toString();if(/Android/i.test(navigator.userAgent)){return 'intent://calendar.google.com/calendar/render?'+params.toString()+'#Intent;scheme=https;package=com.google.android.calendar;S.browser_fallback_url='+encodeURIComponent(webUrl)+';end'}return webUrl}
 let crewPlayers=[];
 function renderSelectedPlayer(){const player=crewPlayers.find(p=>p.id===$('player-select').value),root=$('selected-player-view');if(!player){root.innerHTML='<div class="empty"><b>Select a player</b>Their last 12 months of contributions will appear here.</div>';return}const clean=cleanDays(player.days||{}),streak=streakOf(player.days||{});root.innerHTML='<div class="player-profile-head"><div><strong>'+esc(player.name)+'</strong><small>@'+esc(player.id)+'</small></div><span class="pill">'+streak+' day streak</span></div><div class="player-profile-stats"><div><b>'+clean+'</b><span>Clean days</span></div><div><b>'+answeredDays(player.days||{})+'</b><span>Check-ins</span></div></div><div class="activity-heat">'+activityMarkup(player.days||{})+'</div>';scrollHeatToToday(root.querySelector('.activity-heat'))}
@@ -637,17 +658,23 @@ $('form').onsubmit=async e=>{
   if(!n||!id||!t){toast('Please enter your username and usual reminder time.');return}
   let existing=foundPlayer&&foundPlayer.id===id?foundPlayer:null;
   if(!existing){try{existing=await remotePlayer(id)}catch(err){console.warn('Could not look up the public player record',err)}}
-  const sameProfile=profile?.id===id,sameDevice=sameProfile&&!!client.deviceKey;
+  const sameProfile=profile?.id===id;
+  if(profile&&!sameProfile)store();
+  const savedDeviceKey=client.deviceKeysByPlayer?.[id]||(sameProfile?client.deviceKey:null);
+  const todayOwner=client.todayPlayerId||client.player?.id||null;
+  if(client.today&&todayOwner!==id){client.today=null;client.todayPlayerId=null}
   if(existing){
-    log=normalizeLog(sameProfile?merge(log,existing.days||{}):(existing.days||{}));
-    if(sameDevice&&client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
+    const localHistory=sameProfile?log:(client.historyByPlayer?.[id]||{});
+    log=normalizeLog(merge(localHistory,existing.days||{}));
+    if(savedDeviceKey&&client.todayPlayerId===id&&client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     profile={...existing,id,name:existing.name||n,usualTime:t,createdAt:existing.createdAt||new Date().toISOString(),status:'active'};
-    if(!sameDevice)client.deviceKey=null;
-    toast(sameDevice?'Welcome back, '+profile.name+'. Your activity was restored.':'Profile found, but this browser is not linked to it. It is view-only here.');
+    client.deviceKey=savedDeviceKey||null;
+    toast(savedDeviceKey?'Welcome back, '+profile.name+'. Your activity was restored.':'Profile found, but this browser is not linked. New check-ins will stay on this device.');
   }else{
-    log=sameProfile?normalizeLog(log):{};
+    const localHistory=sameProfile?log:(client.historyByPlayer?.[id]||{});
+    log=normalizeLog(localHistory);
     profile={id,name:n,usualTime:t,createdAt:new Date().toISOString(),status:'active'};
-    if(!sameDevice)client.deviceKey=createPlayerSecret();
+    client.deviceKey=savedDeviceKey||createPlayerSecret();
     toast('New player profile created.');
   }
   store();
@@ -692,20 +719,20 @@ async function refreshDailyDate(){
 window.addEventListener('focus',refreshDailyDate);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDailyDate()});
 setInterval(refreshDailyDate,60000);
-function shouldAskDaily(){return!!profile&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.today?.date===today()&&isAnsweredEntry(client.today))}
+function shouldAskDaily(){return!!profile&&client.player?.id===profile.id&&!isAnsweredEntry(log[today()])&&!(client.todayPlayerId===profile.id&&client.today?.date===today()&&isAnsweredEntry(client.today))}
 let editingDate=null;
 function openDailyQuestion(edit=false,targetDate=today()){
   const current=today(),dateLabel=new Date(targetDate+'T12:00:00Z').toLocaleDateString('en-IN',{timeZone:C.tz,day:'numeric',month:'long',year:'numeric'});
   if(edit){
     if(!profile||!validDateKey(targetDate)||targetDate>current||targetDate<addDays(current,-1))return;
     if(targetDate===current&&!isAnsweredEntry(log[targetDate]))return;
-    if(targetDate!==current&&isAnsweredEntry(log[targetDate]))return;
+    if(targetDate!==current&&targetDate!==addDays(current,-1))return;
     editingDate=targetDate;
-    $('daily-title').textContent=targetDate===current?'Update today’s status':"Record yesterday’s status";
+    $('daily-title').textContent=targetDate===current?'Update today’s status':(isAnsweredEntry(log[targetDate])?"Update yesterday’s status":"Record yesterday’s status");
     $('daily-day').textContent=(targetDate===current?'UPDATE · ':'RECOVER · ')+dateLabel.toUpperCase();
     $('daily-description').textContent=targetDate===current
       ?'Update your answer for today. No adds a green clean day; Yes keeps today as an answered day without a green mark.'
-      :'This date has no saved check-in. Record the answer you gave yesterday to restore your activity history.';
+      :(isAnsweredEntry(log[targetDate])?'Correct yesterday’s saved answer. This can change your current streak.':'This date has no saved check-in. Record the answer you gave yesterday to restore your activity history.');
     $('daily-later').textContent='Cancel';
   }else{
     if(!shouldAskDaily()){editingDate=null;$('daily-modal').hidden=true;return}
@@ -743,7 +770,7 @@ async function init(){
     console.warn('Could not load remote Goongle profile:',error);
     profile={...client.player,status:'active'};log=normalizeLog(log);
     if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
-    status('Offline · showing only this day');
+    status('Offline · showing local history');
   }
   draw();openDailyQuestion();
 }
