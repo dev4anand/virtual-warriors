@@ -146,6 +146,75 @@ async function readPlayers(env) {
   };
 }
 
+async function relinkPlayer(env, id, payload) {
+  if (typeof env.ADMIN_RECOVERY_SECRET !== "string" || env.ADMIN_RECOVERY_SECRET.length < 32) {
+    return { status: 503, body: { error: "Admin recovery is not configured. Set the ADMIN_RECOVERY_SECRET Worker secret first." } };
+  }
+  if (!payload || typeof payload.adminSecret !== "string" || typeof payload.newSecret !== "string" || !/^[a-f0-9]{64}$/.test(payload.newSecret)) {
+    return { status: 400, body: { error: "A valid admin recovery secret and new device key are required." } };
+  }
+
+  const expected = await sha256(env.ADMIN_RECOVERY_SECRET);
+  const supplied = await sha256(payload.adminSecret);
+  if (expected !== supplied) {
+    return { status: 403, body: { error: "The admin recovery secret is incorrect." } };
+  }
+
+  const path = `/contents/data/players/${id}.json?ref=${BRANCH}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const currentResponse = await githubRequest(env, path);
+    if (currentResponse.status === 404) {
+      return { status: 404, body: { error: "Player profile not found." } };
+    }
+    if (!currentResponse.ok) {
+      const detail = await currentResponse.text();
+      return { status: currentResponse.status, body: { error: "Could not read the player record for recovery.", detail } };
+    }
+
+    const file = await currentResponse.json();
+    const current = JSON.parse(decodeBase64(file.content));
+    const record = {
+      ...current,
+      schemaVersion: 2,
+      id,
+      days: mergeDays({}, current.days || {}),
+      status: "active",
+      authHash: await sha256(payload.newSecret),
+      updatedAt: new Date().toISOString()
+    };
+    const body = {
+      message: `Goongle: administrator relink ${id}`,
+      branch: BRANCH,
+      content: encodeBase64(JSON.stringify(record, null, 2)),
+      sha: file.sha
+    };
+    const writeResponse = await githubRequest(env, `/contents/data/players/${id}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (writeResponse.ok) {
+      return {
+        status: 200,
+        body: { ok: true, id, name: record.name, updatedAt: record.updatedAt }
+      };
+    }
+
+    const detail = await writeResponse.text();
+    let message = detail;
+    try { message = JSON.parse(detail).message || detail; } catch {}
+    const conflict = writeResponse.status === 409 ||
+      (writeResponse.status === 422 && /already exists|sha|does not match|must match/i.test(message));
+    if (conflict && attempt < 2) continue;
+    return {
+      status: writeResponse.status,
+      body: { error: conflict ? "The player record changed during recovery. Please retry." : "GitHub could not update the player key.", detail }
+    };
+  }
+
+  return { status: 409, body: { error: "The player record changed repeatedly. Please retry." } };
+}
+
 async function savePlayer(env, id, payload) {
   if (!payload || typeof payload.secret !== "string" || !/^[a-f0-9]{64}$/.test(payload.secret)) {
     return { status: 400, body: { error: "Invalid player key." } };
@@ -294,6 +363,24 @@ export default {
           "Vary": "Origin"
         }
       });
+    }
+
+    const relinkMatch = url.pathname.match(/^\/admin\/relink\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
+    if (request.method === "POST" && relinkMatch) {
+      const id = relinkMatch[1];
+      if (id.length > 24) return json({ error: "Player ID is too long." }, 400, origin);
+      let payload;
+      try {
+        payload = await request.json();
+      } catch {
+        return json({ error: "Request body must be JSON." }, 400, origin);
+      }
+      try {
+        const result = await relinkPlayer(env, id, payload);
+        return json(result.body, result.status, origin);
+      } catch (error) {
+        return json({ error: error.message || "Unexpected player recovery error." }, 500, origin);
+      }
     }
 
     if (request.method === "GET" && url.pathname === "/players") {
