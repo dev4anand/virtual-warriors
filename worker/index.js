@@ -349,7 +349,11 @@ export default {
           service: "go-tracker-sync",
           tokenConfigured: true,
           githubAccess: true,
-          features: { deviceKeyRecovery: true, conflictSafeWrites: true },
+          features: {
+            deviceKeyRecoveryEndpoint: true,
+            deviceKeyRecovery: typeof env.ADMIN_RECOVERY_SECRET === "string" && env.ADMIN_RECOVERY_SECRET.length >= 32,
+            conflictSafeWrites: true
+          },
           version: "2026-11-03"
         }, 200, origin, true);
       } catch (error) {
