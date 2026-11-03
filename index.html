@@ -547,7 +547,7 @@ function loadClientState(){
     historyByPlayer
   };
 }
-let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false,workerDiagnostic='Not checked yet.',lastSyncDiagnostic='No sync attempt yet.';
+let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false,workerRecoveryEnabled=false,workerDiagnostic='Not checked yet.',lastSyncDiagnostic='No sync attempt yet.';
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day};
 const dateKey=date=>date.toISOString().slice(0,10);const addDays=(key,n)=>{const d=new Date(key+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return dateKey(d)};const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24);
@@ -599,7 +599,7 @@ function showModal(){showWizard(1);}
 function filePath(id){return 'data/players/'+id+'.json'}
 function un64(s){return decodeURIComponent(escape(atob(s.replace(/\n/g,''))))}
 async function api(path){let r=await fetch(API+'/'+path,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},cache:'no-store'});if(!r.ok){let e=new Error('GitHub '+r.status);e.status=r.status;throw e}return r.json()}
-async function checkWorker(){try{const response=await fetch(SYNC_API.replace(/\/$/,'')+'/health',{cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok||result.ok!==true||result.tokenConfigured!==true||result.githubAccess!==true){const detail=result.error||result.githubMessage||(!result.tokenConfigured?'GH_TOKEN secret is missing.':'Worker health check failed.');throw new Error(detail+' (HTTP '+response.status+')')}workerReady=true;workerDiagnostic='Cloudflare Worker and GitHub repository access are healthy.';status('Worker connected',workerDiagnostic);return true}catch(error){workerReady=false;workerDiagnostic=error.message||'Could not contact the Cloudflare Worker.';status('Worker not ready',workerDiagnostic);console.warn('Goongle sync Worker is not ready:',error);return false}}
+async function checkWorker(){try{const response=await fetch(SYNC_API.replace(/\/$/,'')+'/health',{cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok||result.ok!==true||result.tokenConfigured!==true||result.githubAccess!==true){const detail=result.error||result.githubMessage||(!result.tokenConfigured?'GH_TOKEN secret is missing.':'Worker health check failed.');throw new Error(detail+' (HTTP '+response.status+')')}workerReady=true;workerRecoveryEnabled=result.features?.deviceKeyRecovery===true;workerDiagnostic='Cloudflare Worker and GitHub repository access are healthy.'+(workerRecoveryEnabled?' Device-key recovery is enabled.':' The Worker needs the latest deployment to enable device-key recovery.');status('Worker connected',workerDiagnostic);return true}catch(error){workerReady=false;workerDiagnostic=error.message||'Could not contact the Cloudflare Worker.';status('Worker not ready',workerDiagnostic);console.warn('Goongle sync Worker is not ready:',error);return false}}
 async function remotePlayer(id){if(workerReady){const response=await fetch(SYNC_API.replace(/\/$/,'')+'/players/'+encodeURIComponent(id),{headers:{Accept:'application/json'},cache:'no-store'});if(response.status===404)return null;const record=await response.json().catch(()=>({}));if(!response.ok)throw new Error(record.error||('Worker read failed ('+response.status+')'));return record}try{let x=await api('contents/'+filePath(id)+'?ref='+C.branch);return JSON.parse(un64(x.content))}catch(e){if(e.status===404)return null;throw e}}
 async function remoteMine(){return profile?remotePlayer(profile.id):null}
 
@@ -775,9 +775,10 @@ function refreshDeviceLinkDialog(){
     :'Create or select a player profile before managing its device key.';
   $('device-link-status').textContent=linked
     ?'This browser is linked to '+profile.name+'. GitHub sync can use this device key.'
-    :'This browser is not linked to the selected player. Import the key from a browser that is already linked, or use administrator recovery if all linked keys are lost.';
+    :(!profile?'Select a player profile first.':('This browser is not linked to '+profile.name+'. Import a key from another linked browser.'+(workerRecoveryEnabled?' Admin recovery is available.':' Admin recovery will become available after the Cloudflare Worker is updated.')));
   $('export-device-key').disabled=!linked;
   $('choose-device-key').disabled=!profile;
+  $('admin-relink').disabled=!profile||!workerRecoveryEnabled;
 }
 $('device-link-open').onclick=()=>{refreshDeviceLinkDialog();$('device-link-modal').hidden=false};
 $('device-link-close').onclick=()=>$('device-link-modal').hidden=true;
@@ -789,7 +790,7 @@ $('export-device-key').onclick=()=>{
   const backup={format:'goongle-device-key',version:1,playerId:profile.id,playerName:profile.name,deviceKey:client.deviceKey,exportedAt:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;link.download='goongle-key-'+profile.id+'.json';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+  link.href=url;link.download='goongle-key-'+profile.id+'.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   $('device-link-status').textContent='A private key backup was exported for '+profile.name+'. Keep the file somewhere safe and private.';
 };
 $('choose-device-key').onclick=()=>{$('device-key-file').click()};
