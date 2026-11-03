@@ -13,7 +13,7 @@ function json(data, status, origin, publicHealth = false) {
       "Cache-Control": "no-store",
       ...(corsOrigin ? {
         "Access-Control-Allow-Origin": corsOrigin,
-        "Access-Control-Allow-Methods": publicHealth ? "GET" : "GET, PUT, OPTIONS",
+        "Access-Control-Allow-Methods": publicHealth ? "GET" : "GET, POST, PUT, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
         "Vary": publicHealth ? undefined : "Origin"
       } : {})
@@ -357,7 +357,7 @@ export default {
         status: 204,
         headers: {
           "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-          "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
           "Access-Control-Max-Age": "86400",
           "Vary": "Origin"
