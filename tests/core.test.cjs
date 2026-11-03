@@ -231,7 +231,7 @@ const recoveryContext = {
   decodeBase64: value => value,
   encodeBase64: value => value,
   mergeDays: workerContext.mergeDays,
-  githubRequest,
+  githubRequest: recoveryGithubRequest,
   Date,
   Object,
   Number,
