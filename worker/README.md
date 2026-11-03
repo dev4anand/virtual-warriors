@@ -4,13 +4,13 @@ This Cloudflare Worker keeps the GitHub token out of the public static website.
 
 ## Secret configuration
 
-Create a fine-grained GitHub token owned by `dev4anand`, restricted to the `virtual-warriors` repository, with **Contents: Read and write**. In Cloudflare, add it under the Production environment as a **Secret** named `GH_TOKEN`.
+Create a fine-grained GitHub token owned by `dev4anand`, restricted to the `virtual-warriors` repository, with **Contents: Read and write**. In Cloudflare, add it under the Production environment as a **Secret** named `GH_TOKEN`. For secure lost-device recovery, also create a separate high-entropy **Secret** named `ADMIN_RECOVERY_SECRET` (for example, generate it with `openssl rand -hex 32`). Do not reuse the GitHub token.
 
 Never place the token in a repository file, browser JavaScript, or public JSON.
 
 ## Deployment
 
-The Worker source is `worker/index.js`. Deploy the complete current file to the Cloudflare Worker named `go-tracker-sync`. Keep the `GH_TOKEN` Production Secret configured.
+The Worker source is `worker/index.js`. Deploy the complete current file to the Cloudflare Worker named `go-tracker-sync`. Keep the `GH_TOKEN` and (when using lost-key recovery) `ADMIN_RECOVERY_SECRET` Production Secrets configured. The browser recovery UI requires the updated Worker source and the `ADMIN_RECOVERY_SECRET` secret.
 
 ## Endpoints
 
@@ -18,6 +18,7 @@ The Worker source is `worker/index.js`. Deploy the complete current file to the 
 - `GET /players` — lists public player records for the in-app dropdown.
 - `GET /players/{player-id}` — returns one public player record without its private authentication hash.
 - `PUT /players/{player-id}` — validates the player's device key and creates or updates their JSON file.
+- `POST /admin/relink/{player-id}` — rotates a lost player device key only when the separate `ADMIN_RECOVERY_SECRET` is supplied. It preserves the existing player history and profile data. The endpoint is restricted by the same official-site Origin check.
 
 The Worker accepts valid calendar dates in `YYYY-MM-DD` format across all months and years. Each answer is stored as either:
 - `{"answered": true, "clean": true, "updatedAt": "..."}` for a clean day.
