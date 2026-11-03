@@ -344,7 +344,14 @@ export default {
             error: "GitHub rejected the Worker request. See githubMessage and requiredPermissions for details."
           }, 502, origin, true);
         }
-        return json({ ok: true, service: "go-tracker-sync", tokenConfigured: true, githubAccess: true }, 200, origin, true);
+        return json({
+          ok: true,
+          service: "go-tracker-sync",
+          tokenConfigured: true,
+          githubAccess: true,
+          features: { deviceKeyRecovery: true, conflictSafeWrites: true },
+          version: "2026-11-03"
+        }, 200, origin, true);
       } catch (error) {
         return json({ ok: false, service: "go-tracker-sync", tokenConfigured: true, githubAccess: false, error: error.message || "GitHub health check failed." }, 502, origin, true);
       }
