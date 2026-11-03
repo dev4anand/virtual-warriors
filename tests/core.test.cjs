@@ -187,6 +187,75 @@ assert.equal(workerMerged[older].updatedAt, older + 'T12:00:00.000Z',
   'Worker legacy timestamp fallback must be deterministic');
 assert.equal(workerMerged[shiftDay(current, 1)], undefined, 'Worker must reject future date keys');
 
+assert.match(worker, /Access-Control-Allow-Methods[^\n]*GET, POST, PUT, OPTIONS/,
+  'Worker CORS preflight must permit the secure recovery POST');
+assert.ok(worker.includes('if (request.method === "POST" && relinkMatch)'),
+  'Worker must expose the administrator-protected relink route');
+assert.ok(html.includes('id="device-link-open"') &&
+  html.includes('id="export-device-key"') &&
+  html.includes('id="choose-device-key"') &&
+  html.includes('id="admin-relink"'),
+  'the website must provide device-key export, import and administrator recovery controls');
+
+const relinkStart = worker.indexOf('async function relinkPlayer(env, id, payload)');
+const relinkEnd = worker.indexOf('async function savePlayer(env, id, payload)', relinkStart);
+assert.ok(relinkStart >= 0 && relinkEnd > relinkStart, 'Worker admin relink function must be present');
+const relinkCode = worker.slice(relinkStart, relinkEnd);
+let recoveredRecord = {
+  id: 'sample-player',
+  name: 'Sample Player',
+  usualTime: '18:00',
+  status: 'active',
+  createdAt: previous + 'T08:00:00.000Z',
+  updatedAt: previous + 'T12:00:00.000Z',
+  authHash: 'old-hash',
+  days: { [previous]: { answered: true, clean: true, updatedAt: previous + 'T12:00:00.000Z' } }
+};
+let recoveryWrites = 0;
+const recoveryGithubRequest = async (_env, _path, options) => {
+  if (!options) return { status: 200, json: async () => ({ content: JSON.stringify(recoveredRecord), sha: 'recovery-sha' }) };
+  recoveryWrites++;
+  recoveredRecord = JSON.parse(JSON.parse(options.body).content);
+  return { ok: true, status: 200 };
+};
+const recoveryContext = {
+  BRANCH: 'main',
+  sha256: async value => value === 'correct-admin-code' ? 'admin-hash' : 'hash:' + value,
+  decodeBase64: value => value,
+  encodeBase64: value => value,
+  mergeDays: workerContext.mergeDays,
+  githubRequest,
+  Date,
+  Object,
+  Number,
+  String,
+  Intl
+};
+vm.runInNewContext(relinkCode + '\nglobalThis.relinkPlayer = relinkPlayer;', recoveryContext);
+(async () => {
+  const denied = await recoveryContext.relinkPlayer(
+    { ADMIN_RECOVERY_SECRET: 'correct-admin-code' },
+    'sample-player',
+    { adminSecret: 'wrong-admin-code', newSecret: 'd'.repeat(64) }
+  );
+  assert.equal(denied.status, 403, 'an incorrect recovery secret must not rotate the player key');
+
+  const recovered = await recoveryContext.relinkPlayer(
+    { ADMIN_RECOVERY_SECRET: 'correct-admin-code' },
+    'sample-player',
+    { adminSecret: 'correct-admin-code', newSecret: 'd'.repeat(64) }
+  );
+  assert.equal(recovered.status, 200, 'the administrator recovery secret should restore a lost device link');
+  assert.equal(recoveredRecord.authHash, 'hash:' + 'd'.repeat(64),
+    'recovery must replace the stored authentication hash with the new device key hash');
+  assert.ok(recoveredRecord.days[previous].clean,
+    'recovery must preserve the player’s existing daily contribution history');
+  assert.equal(recoveryWrites, 1, 'a successful key recovery must write the player record once');
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
 const saveStart = worker.indexOf('async function savePlayer(env, id, payload)');
 const saveEnd = worker.indexOf('\n\nexport default', saveStart);
 assert.ok(saveStart >= 0 && saveEnd > saveStart, 'Worker save endpoint must be present');
