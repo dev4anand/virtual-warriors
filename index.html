@@ -340,7 +340,18 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 .sync-retry{width:29px;height:29px;flex:none;border:1px solid #354353;border-radius:50%;background:#17212c;color:#c3d0dc;font-size:15px;cursor:pointer}
 .sync-retry:hover{background:#263746;border-color:#69b7ff;color:#e6f2ff}
 .sync-retry:disabled{opacity:.5;cursor:wait}
-.sync-retry:focus-visible{outline:2px solid #69b7ff;outline-offset:3px}
+.sync-retry:focus-visible,.sync-key:focus-visible{outline:2px solid #69b7ff;outline-offset:3px}
+.sync-key{width:29px;height:29px;flex:none;border:1px solid #354353;border-radius:50%;background:#17212c;color:#c3d0dc;font-size:14px;cursor:pointer}
+.sync-key:hover{background:#263746;border-color:#69b7ff;color:#e6f2ff}
+.device-link-box{width:min(100%,460px);padding:25px}
+.device-link-box h2{font-size:22px;margin:10px 0 8px}
+.device-link-box p{font-size:11px;line-height:1.7;color:#9aa8b6}
+.device-link-note{padding:12px;border:1px solid #38516a;border-radius:10px;background:#172331;color:#c8d9e8!important}
+.device-link-actions{display:grid;gap:9px;margin-top:16px}
+.device-link-actions button{width:100%;min-height:42px}
+.device-link-actions input[type=file]{display:none}
+.device-link-help{font-size:9px!important;color:#8393a3!important;margin-top:13px}
+
 .status-badge{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:30px;padding:6px 13px;border-radius:30px;border:1px solid #354353;background:#17212c;color:#c3d0dc!important;font-size:10px!important;font-weight:700;letter-spacing:.15px;white-space:nowrap;box-shadow:inset 0 1px #ffffff08}
 .status-badge::before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:#8b98a8;box-shadow:0 0 0 3px #8b98a81c}
 .status-badge.connected{color:#a7f3b7!important;border-color:#28683c;background:#12271a}
@@ -468,7 +479,7 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 </style></head><body>
 <header class="top">
   <div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#000000"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#39d353" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#58a6ff" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#f0c75e"/></svg><span>Goongle</span></div>
-  <div class="status-slot"><span id="sync" class="status-badge local" role="status" aria-live="polite">Checking sync…</span><button class="sync-retry" id="retry-sync" type="button" aria-label="Check server and retry sync" title="Check the Cloudflare Worker and retry GitHub sync">↻</button></div>
+  <div class="status-slot"><span id="sync" class="status-badge local" role="status" aria-live="polite">Checking sync…</span><button class="sync-retry" id="retry-sync" type="button" aria-label="Check server and retry sync" title="Check the Cloudflare Worker and retry GitHub sync">↻</button><button class="sync-key" id="device-link-open" type="button" aria-label="Manage device link" title="Export or import your secure player device key">⇄</button></div>
   <div class="top-actions"><button class="gear" id="settings" aria-label="Settings">⚙</button></div>
 </header>
 <main class="wrap">
@@ -497,6 +508,7 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 <section class="wizard-step" id="calendar-step" hidden><div class="pledge-mark">▦</div><h2>Set your daily reminder</h2><p>Create a daily Google Calendar reminder at your usual time. You can use it every day.</p><div class="calendar-summary"><span>DAILY REMINDER</span><strong id="calendar-time-label">Your usual time</strong><small>Repeats daily · Asia/Kolkata</small></div><a class="primary wizard-action calendar-save" id="calendar-setup" href="#">＋ Add to Google Calendar</a><button class="wizard-finish" id="finish-onboarding" type="button">Continue to Goongle →</button><small class="wizard-footnote">You can update this reminder from the tracker settings.</small></section>
 </div></div>
 <div class="modal players-modal" id="players-modal" hidden role="dialog" aria-modal="true" aria-labelledby="players-title"><div class="box players-box"><button class="close" id="close-players" aria-label="Close">×</button><div class="kicker">THE COMMUNITY</div><h2 id="players-title">Players’ activity</h2><p>Choose a player to explore their daily contribution history and streak.</p><label class="player-select-label" for="player-select">Select player</label><select id="player-select" class="player-select"><option value="">Loading players…</option></select><div id="selected-player-view" class="selected-player-view"><div class="empty"><b>Select a player</b>Their contribution history will appear here.</div></div></div></div>
+<div class="modal" id="device-link-modal" hidden role="dialog" aria-modal="true" aria-labelledby="device-link-title"><div class="box device-link-box"><button class="close" id="device-link-close" aria-label="Close">×</button><div class="kicker">SECURE PLAYER CONNECTION</div><h2 id="device-link-title">Link this browser</h2><p id="device-link-description">A private device key connects this browser to your player profile. It is never displayed on screen.</p><p class="device-link-note" id="device-link-status">Select a player profile to manage its device link.</p><div class="device-link-actions"><button class="primary" id="export-device-key" type="button">↓ &nbsp; Export linked device key</button><button class="secondary-btn" id="choose-device-key" type="button">↑ &nbsp; Import key from another device</button><input id="device-key-file" type="file" accept=".json,application/json"></div><p class="device-link-help">Keep the exported JSON file private. Anyone who has it can sync as this player. If every linked device has lost the key, it cannot be reconstructed from GitHub; the repository administrator must perform a secure key reset.</p></div></div>
 <div class="modal daily-modal" id="daily-modal" hidden role="dialog" aria-modal="true" aria-labelledby="daily-title"><div class="box daily-box"><div class="kicker">ONE CHECK-IN · EVERY DAY</div><div class="daily-day" id="daily-day">TODAY’S CHECK-IN</div><h2 id="daily-title">Did you goon today?</h2><p id="daily-description">Be honest. <strong>No</strong> adds a bright green day and builds your streak. <strong>Yes</strong> records that today’s question was answered, but adds no contribution mark. We only highlight clean days.</p><div class="answers"><button class="answer no-go" id="daily-no" type="button">✓ &nbsp;No, I didn’t goon</button><button class="answer neutral-go" id="daily-yes" type="button">Yes, I did</button></div><button class="daily-later" id="daily-later" type="button">Close for now</button></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -755,8 +767,60 @@ $('retry-sync').onclick=async()=>{
     else toast('Sync failed: '+result.reason);
   }finally{button.disabled=false}
 };
+function refreshDeviceLinkDialog(){
+  const linked=!!profile&&!!client.deviceKey&&client.deviceKeyPlayerId===profile.id&&client.player?.id===profile.id;
+  $('device-link-title').textContent=profile?'Device link · '+profile.name:'Link this browser';
+  $('device-link-description').textContent=profile
+    ?'This browser can sync only with the private key linked to '+profile.name+'. Export it here to move the connection to another device, or import a key exported from your original device.'
+    :'Create or select a player profile before managing its device key.';
+  $('device-link-status').textContent=linked
+    ?'This browser is linked to '+profile.name+'. GitHub sync can use this device key.'
+    :'This browser is not linked to the selected player. Import the key from a browser that is already linked.';
+  $('export-device-key').disabled=!linked;
+  $('choose-device-key').disabled=!profile;
+}
+$('device-link-open').onclick=()=>{refreshDeviceLinkDialog();$('device-link-modal').hidden=false};
+$('device-link-close').onclick=()=>$('device-link-modal').hidden=true;
+$('device-link-modal').onclick=e=>{if(e.target===$('device-link-modal'))$('device-link-modal').hidden=true};
+$('export-device-key').onclick=()=>{
+  if(!profile||!client.deviceKey||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id){
+    toast('This browser has no linked key to export.');return;
+  }
+  const backup={format:'goongle-device-key',version:1,playerId:profile.id,playerName:profile.name,deviceKey:client.deviceKey,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='goongle-key-'+profile.id+'.json';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+  $('device-link-status').textContent='A private key backup was exported for '+profile.name+'. Keep the file somewhere safe and private.';
+};
+$('choose-device-key').onclick=()=>{$('device-key-file').click()};
+$('device-key-file').onchange=async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||!profile)return;
+  const button=$('choose-device-key');button.disabled=true;
+  const oldKey=client.deviceKey,oldOwner=client.deviceKeyPlayerId;
+  try{
+    const backup=JSON.parse(await file.text());
+    if(backup.format!=='goongle-device-key'||backup.version!==1||backup.playerId!==profile.id||typeof backup.deviceKey!=='string'||!/^[a-f0-9]{64}$/.test(backup.deviceKey)){
+      throw new Error('This file is invalid or belongs to a different player profile.');
+    }
+    client.deviceKey=backup.deviceKey;client.deviceKeyPlayerId=profile.id;store();
+    const healthy=await checkWorker();
+    if(!healthy)throw new Error('Worker is unavailable: '+workerDiagnostic);
+    const result=await syncCurrentPlayer();
+    if(!result.ok)throw new Error(result.reason||lastSyncDiagnostic);
+    $('device-link-status').textContent='Successfully linked this browser to '+profile.name+'. GitHub accepted the profile key and history.';
+    refreshDeviceLinkDialog();
+    $('device-link-status').textContent='Successfully linked this browser to '+profile.name+'. GitHub accepted the profile key and history.';
+    draw();await drawPlayers();toast('Device link restored. GitHub sync is working.');
+  }catch(error){
+    client.deviceKey=oldKey||null;client.deviceKeyPlayerId=oldOwner||null;store();
+    lastSyncDiagnostic=error.message||'Could not import this device key.';
+    $('device-link-status').textContent='Import failed: '+lastSyncDiagnostic;
+    status('Sync failed',lastSyncDiagnostic);toast('Device link was not changed: '+lastSyncDiagnostic);
+  }finally{button.disabled=false}
+};
 $('view-players').onclick=async()=>{$('players-modal').hidden=false;await drawPlayers()};$('close-players').onclick=()=>$('players-modal').hidden=true;$('player-select').onchange=renderSelectedPlayer;$('players-modal').onclick=e=>{if(e.target===$('players-modal'))$('players-modal').hidden=true};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)closeDailyQuestion();else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('device-link-modal').hidden)$('device-link-modal').hidden=true;else if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)closeDailyQuestion();else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
 window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}});
 let activeDailyDate=today(),dailyDateRefreshRunning=false;
 async function refreshDailyDate(){
