@@ -757,7 +757,7 @@ $('retry-sync').onclick=async()=>{
 };
 $('view-players').onclick=async()=>{$('players-modal').hidden=false;await drawPlayers()};$('close-players').onclick=()=>$('players-modal').hidden=true;$('player-select').onchange=renderSelectedPlayer;$('players-modal').onclick=e=>{if(e.target===$('players-modal'))$('players-modal').hidden=true};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)closeDailyQuestion();else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
-window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}else status('Local only')});
+window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}});
 let activeDailyDate=today(),dailyDateRefreshRunning=false;
 async function refreshDailyDate(){
   const current=today();
