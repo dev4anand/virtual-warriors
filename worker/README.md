@@ -32,7 +32,7 @@ The website is hosted at https://dev4anand.github.io/virtual-warriors/ and uses 
 
 The browser writes to localStorage first, keeps a per-player daily history and device key, then syncs the daily record with the Worker. On site open, it merges local history with the public record by timestamp and retries pending changes. The browser also protects saved answers from being carried into another player's profile. The Pages build runs the regression suite in `tests/core.test.cjs` before publishing.
 
-Each player has a random device-specific key stored in browser localStorage. GitHub stores only the SHA-256 hash. Clearing browser storage loses that device key; cross-device editing requires a recovery-key feature.
+Each player has a random device-specific key stored in browser localStorage. GitHub stores only the SHA-256 hash. The site provides private key export/import for moving an existing link. If all linked copies are lost, the administrator can rotate the key with `POST /admin/relink/{player-id}` after deploying the updated Worker and configuring `ADMIN_RECOVERY_SECRET`.
 
 Google Calendar is optional and serves only as a reminder/notification channel. Check-in answers and contribution history remain in Goongle.
 
