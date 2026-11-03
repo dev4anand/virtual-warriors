@@ -38,7 +38,7 @@ The static website never contains the GitHub token. The Cloudflare Worker uses t
 - `GET /players/{player-id}` — reads one public player record.
 - `PUT /players/{player-id}` — securely creates or updates one player's JSON using their device key.
 
-Each player has a random device-specific key stored in that browser's localStorage; GitHub stores only its SHA-256 hash. Clearing site data loses that device key. Cross-device editing requires a recovery-key mechanism.
+Each player has a random device-specific key stored in that browser's localStorage; GitHub stores only its SHA-256 hash. The Device Link control exports a private backup from a linked browser and imports it on another device. If all copies are lost, the repository administrator can rotate the key through the Cloudflare Worker using the separate `ADMIN_RECOVERY_SECRET`.
 
 ## Setup
 
