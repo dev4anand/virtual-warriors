@@ -336,7 +336,11 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 .top{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;max-width:none!important;width:100%;padding:12px max(22px,calc((100% - 1040px)/2))!important;background:#0b0f14!important;border-bottom:1px solid #263340!important;box-shadow:0 5px 22px #0003}
 .brand{grid-column:1;justify-self:start;display:flex;align-items:center;gap:10px;color:#f1f5f9!important;font-size:20px;font-weight:750}
 .brand-mark{width:38px;height:38px;display:block;flex:none}
-.status-slot{grid-column:2;justify-self:center;min-width:0}
+.status-slot{grid-column:2;justify-self:center;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px}
+.sync-retry{width:29px;height:29px;flex:none;border:1px solid #354353;border-radius:50%;background:#17212c;color:#c3d0dc;font-size:15px;cursor:pointer}
+.sync-retry:hover{background:#263746;border-color:#69b7ff;color:#e6f2ff}
+.sync-retry:disabled{opacity:.5;cursor:wait}
+.sync-retry:focus-visible{outline:2px solid #69b7ff;outline-offset:3px}
 .status-badge{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:30px;padding:6px 13px;border-radius:30px;border:1px solid #354353;background:#17212c;color:#c3d0dc!important;font-size:10px!important;font-weight:700;letter-spacing:.15px;white-space:nowrap;box-shadow:inset 0 1px #ffffff08}
 .status-badge::before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:#8b98a8;box-shadow:0 0 0 3px #8b98a81c}
 .status-badge.connected{color:#a7f3b7!important;border-color:#28683c;background:#12271a}
@@ -464,7 +468,7 @@ body{background:radial-gradient(ellipse at 12% 5%,#23863620,transparent 36%),var
 </style></head><body>
 <header class="top">
   <div class="brand" aria-label="Goongle"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" rx="12" fill="#000000"/><path d="M29.8 13.5A11.5 11.5 0 1 0 31.2 21H20.5" fill="none" stroke="#39d353" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.8 20.8H24" fill="none" stroke="#58a6ff" stroke-width="4.4" stroke-linecap="round"/><circle cx="29.8" cy="11.7" r="2.2" fill="#f0c75e"/></svg><span>Goongle</span></div>
-  <div class="status-slot"><span id="sync" class="status-badge local" role="status" aria-live="polite">Local mode</span></div>
+  <div class="status-slot"><span id="sync" class="status-badge local" role="status" aria-live="polite">Checking sync…</span><button class="sync-retry" id="retry-sync" type="button" aria-label="Check server and retry sync" title="Check the Cloudflare Worker and retry GitHub sync">↻</button></div>
   <div class="top-actions"><button class="gear" id="settings" aria-label="Settings">⚙</button></div>
 </header>
 <main class="wrap">
@@ -531,7 +535,7 @@ function loadClientState(){
     historyByPlayer
   };
 }
-let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false;
+let client=loadClientState(),profile=client.player?{...client.player,status:'active'}:null,log={},foundPlayer=null,workerReady=false,workerDiagnostic='Not checked yet.',lastSyncDiagnostic='No sync attempt yet.';
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).reduce((o,x)=>(o[x.type]=x.value,o),{});return p.year+'-'+p.month+'-'+p.day};
 const dateKey=date=>date.toISOString().slice(0,10);const addDays=(key,n)=>{const d=new Date(key+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return dateKey(d)};const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24);
@@ -575,7 +579,7 @@ const store=()=>{
 const isEliminated=()=>false;
 const isCompleted=()=>false;
 function toast(s){let t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),3000)}
-function status(s){const el=$('sync');el.textContent=s;el.classList.remove('connected','warning','local');el.classList.add(/synced|loaded|connected/i.test(s)?'connected':/error|not ready|local only|offline|storage unavailable/i.test(s)?'warning':'local')}
+function status(s,detail=''){const el=$('sync');el.textContent=s;el.title=detail||s;el.setAttribute('aria-label',detail||s);el.classList.remove('connected','warning','local');el.classList.add(/synced|loaded|connected/i.test(s)?'connected':/error|failed|not ready|local only|offline|storage unavailable|not linked/i.test(s)?'warning':'local')}
 let wizardStep=1;
 function setWizardStep(step){wizardStep=step;['welcome','pledge','profile','calendar'].forEach((name,i)=>$(name+'-step').hidden=(i+1)!==step);$('wizard-kicker').textContent=['WELCOME · STEP 1 OF 4','THE PLEDGE · STEP 2 OF 4','YOUR PROFILE · STEP 3 OF 4','CALENDAR · STEP 4 OF 4'][step-1];$('wizard-progress').style.width=(step*25)+'%';}
 function showWizard(step=1){foundPlayer=null;$('name').value=profile?.name||'';$('time').value=profile?.usualTime||'';$('lookup').textContent='Your name becomes your player identity.';$('pledge-ack').checked=client.pledgeAccepted===true;$('pledge-next').disabled=!$('pledge-ack').checked;setWizardStep(step);$('modal').hidden=false;}
@@ -583,23 +587,34 @@ function showModal(){showWizard(1);}
 function filePath(id){return 'data/players/'+id+'.json'}
 function un64(s){return decodeURIComponent(escape(atob(s.replace(/\n/g,''))))}
 async function api(path){let r=await fetch(API+'/'+path,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},cache:'no-store'});if(!r.ok){let e=new Error('GitHub '+r.status);e.status=r.status;throw e}return r.json()}
-async function checkWorker(){try{const response=await fetch(SYNC_API.replace(/\/$/,'')+'/health',{cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok||result.ok!==true||result.tokenConfigured!==true||result.githubAccess!==true)throw new Error(result.error||(!result.tokenConfigured?'GH_TOKEN secret is missing.':'Worker health check failed.'));workerReady=true;status('Worker connected');return true}catch(error){workerReady=false;status('Worker not ready');console.warn('Goongle sync Worker is not ready:',error);return false}}
+async function checkWorker(){try{const response=await fetch(SYNC_API.replace(/\/$/,'')+'/health',{cache:'no-store'});const result=await response.json().catch(()=>({}));if(!response.ok||result.ok!==true||result.tokenConfigured!==true||result.githubAccess!==true){const detail=result.error||result.githubMessage||(!result.tokenConfigured?'GH_TOKEN secret is missing.':'Worker health check failed.');throw new Error(detail+' (HTTP '+response.status+')')}workerReady=true;workerDiagnostic='Cloudflare Worker and GitHub repository access are healthy.';status('Worker connected',workerDiagnostic);return true}catch(error){workerReady=false;workerDiagnostic=error.message||'Could not contact the Cloudflare Worker.';status('Worker not ready',workerDiagnostic);console.warn('Goongle sync Worker is not ready:',error);return false}}
 async function remotePlayer(id){if(workerReady){const response=await fetch(SYNC_API.replace(/\/$/,'')+'/players/'+encodeURIComponent(id),{headers:{Accept:'application/json'},cache:'no-store'});if(response.status===404)return null;const record=await response.json().catch(()=>({}));if(!response.ok)throw new Error(record.error||('Worker read failed ('+response.status+')'));return record}try{let x=await api('contents/'+filePath(id)+'?ref='+C.branch);return JSON.parse(un64(x.content))}catch(e){if(e.status===404)return null;throw e}}
 async function remoteMine(){return profile?remotePlayer(profile.id):null}
 
 function createPlayerSecret(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
 async function syncCurrentPlayer(){
-  if(!SYNC_API||!profile)return {ok:false,reason:'not-configured'};
+  if(!SYNC_API||!profile){lastSyncDiagnostic='No active player profile or sync URL.';return {ok:false,reason:lastSyncDiagnostic}}
   store();
   const secret=client.deviceKey;
-  if(!secret||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id){status('Local only');return {ok:false,reason:'no-player-key'}}
+  if(!secret||client.deviceKeyPlayerId!==profile.id||client.player?.id!==profile.id){
+    lastSyncDiagnostic='This browser has no device key linked to "'+profile.name+'". Use the original browser that created this player profile, or arrange a secure key migration.';
+    status('Local only',lastSyncDiagnostic);
+    return {ok:false,reason:'no-player-key'};
+  }
   const record={schemaVersion:2,id:profile.id,name:profile.name,usualTime:profile.usualTime,days:log,status:'active',createdAt:profile.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   try{
-    const response=await fetch(SYNC_API.replace(/\/$/,'')+'/players/'+encodeURIComponent(profile.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret,record})});
+    const response=await fetch(SYNC_API.replace(/\/$/, '')+'/players/'+encodeURIComponent(profile.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret,record})});
     const result=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(result.error||('Sync failed ('+response.status+')'));
-    status('GitHub synced');return {ok:true};
-  }catch(error){console.error(error);status('Local only');return {ok:false,reason:error.message}}
+    if(!response.ok)throw new Error((result.error||('Sync failed (HTTP '+response.status+')'))+(result.detail?' · '+result.detail:''));
+    lastSyncDiagnostic='GitHub accepted the player record at '+new Date().toLocaleTimeString()+'.';
+    status('GitHub synced',lastSyncDiagnostic);
+    return {ok:true};
+  }catch(error){
+    lastSyncDiagnostic=error.message||'The GitHub sync request failed.';
+    console.error('Goongle sync failed:',error);
+    status('Sync failed',lastSyncDiagnostic);
+    return {ok:false,reason:lastSyncDiagnostic};
+  }
 }
 async function lookupPlayerByName(){const n=$('name').value.trim(),id=slug(n);foundPlayer=null;if(!id){$('lookup').textContent='Enter your name to look for an existing player.';return} $('lookup').textContent='Checking for an existing player…';try{const p=await remotePlayer(id);if($('name').value.trim()!==n)return;if(p){foundPlayer=p;$('time').value=p.usualTime||$('time').value;const total=answeredDays(p.days||{});$('lookup').textContent='Existing player: '+p.name+' · '+total+' check-ins · '+streakOf(p.days||{})+' day streak · usual time '+(p.usualTime||'not set')+'.';}else{$('lookup').textContent='New player. Choose your usual go time to create a profile.'}}catch(e){$('lookup').textContent='Could not verify this username. Check your connection and try again.'}}
 function timestampOf(entry){const time=Date.parse(entry?.updatedAt||'');return Number.isFinite(time)?time:0}
@@ -728,6 +743,18 @@ $('settings').onclick=()=>showWizard(3);$('close').onclick=()=>{if(client.onboar
 
 function closeDailyQuestion(){editingDate=null;$('daily-modal').hidden=true}
 $('daily-no').onclick=()=>answerDaily(true);$('daily-yes').onclick=()=>answerDaily(false);$('daily-later').onclick=closeDailyQuestion;
+$('retry-sync').onclick=async()=>{
+  const button=$('retry-sync');button.disabled=true;
+  try{
+    const healthy=await checkWorker();
+    if(!healthy){toast('Server unavailable: '+workerDiagnostic);return}
+    if(!profile){toast('Server is healthy. Create or select your player profile first.');return}
+    if(!client.deviceKey||client.deviceKeyPlayerId!==profile.id){await syncCurrentPlayer();toast(lastSyncDiagnostic);return}
+    const result=await syncCurrentPlayer();
+    if(result.ok){draw();await drawPlayers();toast('GitHub sync successful. Your check-ins are now shared.')}
+    else toast('Sync failed: '+result.reason);
+  }finally{button.disabled=false}
+};
 $('view-players').onclick=async()=>{$('players-modal').hidden=false;await drawPlayers()};$('close-players').onclick=()=>$('players-modal').hidden=true;$('player-select').onchange=renderSelectedPlayer;$('players-modal').onclick=e=>{if(e.target===$('players-modal'))$('players-modal').hidden=true};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('players-modal').hidden)$('players-modal').hidden=true;else if(!$('daily-modal').hidden)closeDailyQuestion();else if(!$('modal').hidden&&client.onboarded)$('modal').hidden=true}});
 window.addEventListener('online',async()=>{if(!profile||!client.deviceKey||client.player?.id!==profile.id)return;const synced=await syncCurrentPlayer();if(synced.ok){draw();await drawPlayers()}else status('Local only')});
@@ -791,21 +818,21 @@ async function init(){
       profile={...client.player,status:'active',createdAt:client.player.createdAt||new Date().toISOString()};log=normalizeLog(log);
       if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
       store();
-      if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
-      else status('Local only · profile not linked');
+      if(client.deviceKey&&client.deviceKeyPlayerId===profile.id){const synced=await syncCurrentPlayer();if(!synced.ok)status('Sync failed',synced.reason)}
+      else status('Local only',workerReady?'Worker is healthy, but this browser is not linked to the selected player.':'Worker problem: '+workerDiagnostic);
       draw();openDailyQuestion();return;
     }
     profile={...remote,id:remote.id||playerId,name:remote.name||client.player.name,usualTime:remote.usualTime||client.player.usualTime,status:'active'};
     log=normalizeLog(merge(log,remote.days||{}));
     if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
     store();
-    if(client.deviceKey){const synced=await syncCurrentPlayer();if(!synced.ok)status('Local only')}
-    else status('Local only · profile not linked');
+    if(client.deviceKey&&client.deviceKeyPlayerId===profile.id){const synced=await syncCurrentPlayer();if(!synced.ok)status('Sync failed',synced.reason)}
+    else status('Local only',workerReady?'Worker is healthy, but this browser is not linked to the selected player.':'Worker problem: '+workerDiagnostic);
   }catch(error){
     console.warn('Could not load remote Goongle profile:',error);
     profile={...client.player,status:'active'};log=normalizeLog(log);
     if(client.today?.date===today()&&isAnsweredEntry(client.today))log=merge(log,{[today()]:client.today});
-    status('Offline · showing local history');
+    status('Offline · showing local history',error.message||workerDiagnostic);
   }
   draw();openDailyQuestion();
 }
