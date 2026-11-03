@@ -227,7 +227,7 @@ const recoveryGithubRequest = async (_env, _path, options) => {
 };
 const recoveryContext = {
   BRANCH: 'main',
-  sha256: async value => value === 'correct-admin-code' ? 'admin-hash' : 'hash:' + value,
+  sha256: async value => value === 'correct-admin-recovery-secret-0123456789' ? 'admin-hash' : 'hash:' + value,
   decodeBase64: value => value,
   encodeBase64: value => value,
   mergeDays: workerContext.mergeDays,
@@ -241,16 +241,16 @@ const recoveryContext = {
 vm.runInNewContext(relinkCode + '\nglobalThis.relinkPlayer = relinkPlayer;', recoveryContext);
 (async () => {
   const denied = await recoveryContext.relinkPlayer(
-    { ADMIN_RECOVERY_SECRET: 'correct-admin-code' },
+    { ADMIN_RECOVERY_SECRET: 'correct-admin-recovery-secret-0123456789' },
     'sample-player',
     { adminSecret: 'wrong-admin-code', newSecret: 'd'.repeat(64) }
   );
   assert.equal(denied.status, 403, 'an incorrect recovery secret must not rotate the player key');
 
   const recovered = await recoveryContext.relinkPlayer(
-    { ADMIN_RECOVERY_SECRET: 'correct-admin-code' },
+    { ADMIN_RECOVERY_SECRET: 'correct-admin-recovery-secret-0123456789' },
     'sample-player',
-    { adminSecret: 'correct-admin-code', newSecret: 'd'.repeat(64) }
+    { adminSecret: 'correct-admin-recovery-secret-0123456789', newSecret: 'd'.repeat(64) }
   );
   assert.equal(recovered.status, 200, 'the administrator recovery secret should restore a lost device link');
   assert.equal(recoveredRecord.authHash, 'hash:' + 'd'.repeat(64),
