@@ -823,7 +823,6 @@ $('admin-relink').onclick=async()=>{
   }finally{
     $('admin-recovery-secret').value='';
     button.disabled=false;
-    status(client.deviceKey&&client.deviceKeyPlayerId===profile?.id?'Local only':'Sync failed',lastSyncDiagnostic||workerDiagnostic);
   }
 };
 $('device-key-file').onchange=async event=>{
