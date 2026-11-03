@@ -196,8 +196,9 @@ assert.ok(html.includes('id="device-link-open"') &&
   html.includes('id="choose-device-key"') &&
   html.includes('id="admin-relink"'),
   'the website must provide device-key export, import and administrator recovery controls');
-assert.ok(html.includes('workerRecoveryEnabled=result.features?.deviceKeyRecovery===true'),
-  'the website must detect whether the live Cloudflare Worker supports key recovery');
+assert.ok(html.includes('workerRecoveryEndpointAvailable=result.features?.deviceKeyRecoveryEndpoint===true') &&
+  html.includes('workerRecoveryEnabled=workerRecoveryEndpointAvailable&&result.features?.deviceKeyRecovery===true'),
+  'the website must verify that the live Worker has both the recovery endpoint and configured secret');
 assert.ok(worker.includes('deviceKeyRecoveryEndpoint: true') &&
   worker.includes('deviceKeyRecovery: typeof env.ADMIN_RECOVERY_SECRET === "string"') &&
   worker.includes('conflictSafeWrites: true'),
