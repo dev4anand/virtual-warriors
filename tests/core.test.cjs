@@ -220,7 +220,7 @@ let recoveredRecord = {
 };
 let recoveryWrites = 0;
 const recoveryGithubRequest = async (_env, _path, options) => {
-  if (!options) return { status: 200, json: async () => ({ content: JSON.stringify(recoveredRecord), sha: 'recovery-sha' }) };
+  if (!options) return { ok: true, status: 200, json: async () => ({ content: JSON.stringify(recoveredRecord), sha: 'recovery-sha' }) };
   recoveryWrites++;
   recoveredRecord = JSON.parse(JSON.parse(options.body).content);
   return { ok: true, status: 200 };
