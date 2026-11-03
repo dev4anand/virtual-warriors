@@ -196,6 +196,10 @@ assert.ok(html.includes('id="device-link-open"') &&
   html.includes('id="choose-device-key"') &&
   html.includes('id="admin-relink"'),
   'the website must provide device-key export, import and administrator recovery controls');
+assert.ok(html.includes('workerRecoveryEnabled=result.features?.deviceKeyRecovery===true'),
+  'the website must detect whether the live Cloudflare Worker supports key recovery');
+assert.ok(worker.includes('features: { deviceKeyRecovery: true, conflictSafeWrites: true }'),
+  'the Worker health endpoint must advertise the recovery and conflict-safe write features');
 
 const relinkStart = worker.indexOf('async function relinkPlayer(env, id, payload)');
 const relinkEnd = worker.indexOf('async function savePlayer(env, id, payload)', relinkStart);
